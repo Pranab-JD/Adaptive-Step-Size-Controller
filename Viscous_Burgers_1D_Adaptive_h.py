@@ -12,13 +12,12 @@ Description: -
 """
 
 import os
-import math
+import shutil
 import numpy as np
 from decimal import *
 from Leja_Header import *
 import matplotlib.pyplot as plt
 from Adaptive_Step_Size import *
-import scipy.sparse.linalg as spla
 from scipy.sparse import csr_matrix
 
 from datetime import datetime
@@ -61,7 +60,7 @@ class Viscous_Burgers_1D_Adaptive_h:
         self.dif_cfl = self.dx**2/2
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
-        self.dt = 1.5 * min(self.adv_cfl, self.dif_cfl)  # N * CFL condition
+        self.dt = 0.4 * min(self.adv_cfl, self.dif_cfl)  # N * CFL condition
         self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
         self.R = 1./6. * self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
@@ -84,6 +83,13 @@ class Viscous_Burgers_1D_Adaptive_h:
 
         self.A_adv = csr_matrix(self.A_adv)
         self.A_dif = csr_matrix(self.A_dif)
+        
+        ## Eigen values (Diffusion)
+        global eigen_min_dif, eigen_max_dif, eigen_imag_dif, c_real_dif, Gamma_real_dif
+        eigen_min_dif = 0
+        eigen_max_dif, eigen_imag_dif = Gershgorin(self.A_dif)      # Max real, imag eigen value
+        c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
+        Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
         
     ##############################################################################
 
@@ -108,7 +114,7 @@ class Viscous_Burgers_1D_Adaptive_h:
         ## Solution
         u_rk4 = u + 1./6.*(k1 + 2*k2 + 2*k3 + k4)
 
-        return u_rk4, dt
+        return u_rk4, dt, 8
     
     
     ##############################################################################
@@ -166,51 +172,90 @@ class Viscous_Burgers_1D_Adaptive_h:
                 print('Condition reached. Check parameters!!!')
 
         return u_rkf4, u_rkf5, error_rkf45, self.dt
+
+
+    ##############################################################################
+
+    def ETD(self, u, dt):
+
+        ## Leja points
+        Leja_X = Leja_Points()
+        
+        epsilon = 1e-7          # Amplitude of perturbation
+
+        ############## --------------------- ##############
+        
+        ## Eigen values (Advection)
+        eigen_min_adv = 0
+        eigen_max_adv, eigen_imag_adv, its_1 = Power_iteration(self.A_adv, u, 2)    # Max real, imag eigen value
+        eigen_max_adv = eigen_max_adv * 1.2                                         # Safety factor
+        eigen_imag_adv = eigen_imag_adv * 1.125                                     # Safety factor
+        
+        ## c and gamma
+        c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
+        Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
+        c_imag_adv = 0
+        Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
+
+        ################### Advective Term ###################
+        
+        ### Matrix-vector product
+        A_dot_u_1 = self.A_adv.dot(u**2)
+        
+        ### J(u) * u
+        Linear_u = (self.A_adv.dot((u + (epsilon * u))**2) - A_dot_u_1)/epsilon
+
+        ### F(u) - (J(u) * u)
+        Nonlin_u = A_dot_u_1 - Linear_u
+        
+        ## Linear Term
+        # u_lin_adv, its_2 = real_Leja_exp(self.A_adv, u, 2, dt, Leja_X, c_real_adv, Gamma_real_adv)
+        u_lin_adv, its_2 = imag_Leja_exp(self.A_adv, u, 2, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
+        
+        ## Nonlinear Term 
+        # u_nl_adv = real_Leja_phi(phi_1, Nonlin_u, dt, Leja_X, c_real_adv, Gamma_real_adv) * dt
+        u_nl_adv = imag_Leja_phi(phi_1, Nonlin_u, dt, Leja_X, c_imag_adv, Gamma_imag_adv) * dt
+        
+        ## Advection solution
+        u_adv = u_lin_adv + u_nl_adv
+        
+        ################### Diffusive Term ###################
+        
+        u_diff, its_3 = real_Leja_exp(self.A_dif, u_adv, 1, dt, Leja_X, c_real_dif, Gamma_real_dif)
+        
+        ############## --------------------- ##############
+
+        ### Full solution
+        u_temp = u_diff
+        
+        ## Update u and t
+        u_etd = u_temp.copy()
+        
+        return u_etd, dt, 2 + its_1 + its_2 + its_3
     
     
     ##############################################################################
 
     def ETDRK2(self, u, dt):
 
-        # path = './ETDRK2/06/IR/'
-        # os.makedirs(os.path.dirname(path), exist_ok = True)
-        
-        ### Write simulation paramters to a file
-        # file_param = open(path + 'Simulation_Parameters.txt', 'w+')
-        # file_param.write('N = %d' % self.N + '\n')
-        # file_param.write('eta = %f' % self.eta + '\n')
-        # file_param.write('Advection CFL = %.15f' % self.adv_cfl + '\n')
-        # file_param.write('Diffusion CFL = %.15f' % self.dif_cfl + '\n')
-        # file_param.write('dt = %.15f' % self.dt + '\n')
-        # file_param.write('Simulation time = %f' % self.tmax + '\n')
-        # file_param.write('Advection: Imag Leja' + '\n')
-        # file_param.write('Diffusion: Real Leja')
-        # file_param.close()
-
         ## Leja points
         Leja_X = Leja_Points()
         
-        epsilon = 1e-7                               		        # Amplitude of perturbation
-        
-        ## Eigen values (Diffusion)
-        eigen_min_dif = 0
-        eigen_max_dif, eigen_imag_dif = Gershgorin(self.A_dif)      # Max real, imag eigen value
+        epsilon = 1e-7          # Amplitude of perturbation
 
         ############## --------------------- ##############
         
         ## Eigen values (Advection)
         eigen_min_adv = 0
-        eigen_max_adv, eigen_imag_adv = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
-        eigen_max_adv = eigen_max_adv * 1.2                                             # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.125                                         # Safety factor
+        eigen_max_adv, eigen_imag_adv, its_1 = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
+        eigen_max_adv = eigen_max_adv * 1.2                                        # Safety factor
+        eigen_imag_adv = eigen_imag_adv * 1.125                                    # Safety factor
         
         ## c and gamma
         c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
         Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
         c_imag_adv = 0
-        Gamma_imag_adv = 0.25 * (eigen_imag_adv - 0)
-        c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
-        Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
+        Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
 
         ################### Advective Term ###################
         
@@ -224,11 +269,11 @@ class Viscous_Burgers_1D_Adaptive_h:
         Nonlin_u = A_dot_u_1 - Linear_u
         
         ## Linear Term
-        # u_lin_adv = real_Leja_exp(self.A_adv, self.u_etdrk2, 2, self.dt, Leja_X, c_real_adv, Gamma_real_adv)
-        u_lin_adv = imag_Leja_exp(self.A_adv, u, 2, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
+        # u_lin_adv, its_2 = real_Leja_exp(self.A_adv, u, 2, dt, Leja_X, c_real_adv, Gamma_real_adv)
+        u_lin_adv, its_2 = imag_Leja_exp(self.A_adv, u, 2, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
         
         ## Nonlinear Term 
-        # u_nl_adv = real_Leja_phi(phi_1, Nonlin_u, self.dt, Leja_X, c_real_adv, Gamma_real_adv) * self.dt
+        # u_nl_adv = real_Leja_phi(phi_1, Nonlin_u, dt, Leja_X, c_real_adv, Gamma_real_adv) * dt
         u_nl_adv = imag_Leja_phi(phi_1, Nonlin_u, dt, Leja_X, c_imag_adv, Gamma_imag_adv) * dt
 
         ############## --------------------- ##############
@@ -248,7 +293,7 @@ class Viscous_Burgers_1D_Adaptive_h:
         Nonlin_u2 = A_dot_u_2 - Linear_u2
         
         ## Nonlinear Term 
-        # u_nl_2 = real_Leja_phi(phi_2, (Nonlin_u2 - Nonlin_u), self.dt, Leja_X, c_real_adv, Gamma_real_adv) * self.dt
+        # u_nl_2 = real_Leja_phi(phi_2, (Nonlin_u2 - Nonlin_u), dt, Leja_X, c_real_adv, Gamma_real_adv) * dt
         u_nl_2 = imag_Leja_phi(phi_2, (Nonlin_u2 - Nonlin_u), dt, Leja_X, c_imag_adv, Gamma_imag_adv) * dt
         
         ############## --------------------- ##############
@@ -258,7 +303,7 @@ class Viscous_Burgers_1D_Adaptive_h:
         
         ################### Diffusive Term ###################
         
-        u_diff = real_Leja_exp(self.A_dif, u_adv, 1, dt, Leja_X, c_real_dif, Gamma_real_dif)
+        u_diff, its_3 = real_Leja_exp(self.A_dif, u_adv, 1, dt, Leja_X, c_real_dif, Gamma_real_dif)
         
         ############## --------------------- ##############
 
@@ -268,37 +313,95 @@ class Viscous_Burgers_1D_Adaptive_h:
         ## Update u and t
         u_etdrk2 = u_temp.copy()
         
-        return u_etdrk2, dt
+        return u_etdrk2, dt, 4 + its_1 + its_2 + its_3
+    
     
     ##############################################################################
         
     def run(self):
         
+        ## Create directory
+        emax = '{:5.1e}'.format(self.error_tol)
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/01/" + "/tol " + str(emax) + "/ETD/RE/")
+        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/01/" + "/tol " + str(emax))
+        
+        if os.path.exists(path):
+            shutil.rmtree(path)                     # remove previous directory with same name
+        os.makedirs(path, 0o777)                    # create directory with access rights
+        
+        ### Write simulation paramters to a file
+        file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
+        file_param.write('N = %d' % self.N + '\n')
+        file_param.write('eta = %f' % self.eta + '\n')
+        file_param.write('Advection CFL = %.5e' % self.adv_cfl + '\n')
+        file_param.write('Diffusion CFL = %.5e' % self.dif_cfl + '\n')
+        file_param.write('Simulation time = %e' % self.tmax + '\n')
+        file_param.write('Max. error = %e' % self.error_tol + '\n')
+        file_param.write('Advection: Imag Leja' + '\n')
+        file_param.write('Diffusion: Real Leja')
+        file_param.close()
+        
+        ## Create files
+        file_1 = open(path + "u.txt", 'w+')
+        file_2 = open(path + "u_ref.txt", 'w+')
+        file_3 = open(path + "dt.txt", 'w+')
+        file_4 = open(path + "error.txt", 'w+')
+        
+        ## Write initial value of u to files
+        file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+        file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
+        
         time = 0                                    # Time
-        counter = 0                                 # Counter for # of iterations
+        counter = 0                                 # Counter for # of time steps
+        count_mv = 0                                # Counter for matrix-vector products
         
         ## Time loop
         while (time < self.tmax):
+            
+            if time + self.dt >= self.tmax:
+                self.dt = self.tmax - time
 
-            u, u_ref, error, dt = Richardson_Extrapolation(self.ETDRK2, 2, self.u, self.dt, self.error_tol)
-            u, u_ref, error, dt = Higher_Order_Method(self.RK4, self.ETDRK2, 2, self.u, self.dt, self.error_tol)
+            u, u_ref, error, dt, num_mv = Richardson_Extrapolation(self.ETD, 2, self.u, self.dt, self.error_tol)
+            # u, u_ref, error, dt, num_mv = Higher_Order_Method(self.RK4, self.ETD, 2, self.u, self.dt, self.error_tol)
 
             counter = counter + 1
+            count_mv = count_mv + num_mv
             time = time + self.dt
             self.u = u.copy()
             self.dt = dt.copy()
 
-            print('Time = ', time)
-            print('dt = ', self.dt)
+            # print('Time = ', time)
+            # print('dt = ', self.dt)
+            
+            ### Write data to files
+            file_1.write(' '.join(map(str, u)) % u + '\n')
+            file_2.write(' '.join(map(str, u_ref)) % u_ref + '\n')
+            file_3.write('%.15f' % self.dt + '\n')
+            file_4.write('%.15f' % error + '\n')
 
             ## Test plots
-            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            plt.plot(self.X, u, 'b.', label = 'Data')
-            plt.legend()
-            plt.pause(self.dt)
-            plt.clf()
+            # plt.plot(self.X, u_ref, 'rd', label = 'Reference')
+            # plt.plot(self.X, u, 'b.', label = 'Data')
+            # plt.legend()
+            # plt.pause(self.dt)
+            # plt.clf()
     
-    
+        print('Number of iterations = ', counter)
+        print('Number of matrix_vector products = ', count_mv)
+
+        ## Write simulation results to file
+        file_res = open(path + 'Results.txt', 'w+')
+        file_res.write('Number of iterations needed to reach tmax = %d' % counter + '\n')
+        file_res.write('Number of matrix-vector products = %d' % count_mv)
+        file_res.close()
+
+        ## Close files
+        file_1.close()
+        file_2.close()
+        file_3.close()
+        file_4.close()
+        
+        
     ##############################################################################        
         
     def run_RKF45(self):
@@ -319,29 +422,26 @@ class Viscous_Burgers_1D_Adaptive_h:
             print('dt = ', self.dt)
 
             ## Test plots
-            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            plt.plot(self.X, u, 'b.', label = 'Data')
-            plt.legend()
-            plt.pause(self.dt)
-            plt.clf()
+            # plt.plot(self.X, u_ref, 'rd', label = 'Reference')
+            # plt.plot(self.X, u, 'b.', label = 'Data')
+            # plt.legend()
+            # plt.pause(self.dt)
+            # plt.clf()
     
         
 ##############################################################################
 
 # Assign values for N, tmax, and eta
 N = 100
-t_max = 5*1e-3
+t_max = 1e-2
 eta = 100
-error_tol = 1e-4
+error_tol = 1e-7
 
 def main():
     sim = Viscous_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)
-    # sim.RK4()
-    # sim.ETD()
-    # sim.ETDRK2()
-    sim.run_1()
+    sim.run()
     # sim.run_RKF45()
-    plt.show()
+    # plt.show()
 
 if __name__ == "__main__":
     main()

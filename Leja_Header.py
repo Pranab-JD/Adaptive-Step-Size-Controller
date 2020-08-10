@@ -88,6 +88,7 @@ def Power_iteration(A, u, m):
     Returns
     -------
     eigen_val[ii] : Largest eigen value (within 2.5% accuracy)
+    (ii + 1) * 2  : Number of matrix-vector products
 
     """
 
@@ -115,12 +116,12 @@ def Power_iteration(A, u, m):
                 eigen_vector = eigen_vector/eigen_val[ii]
                 vector = eigen_vector.copy()
 
-        return eigen_val[ii]
+        return eigen_val[ii], ii
 
-    eigen_real = eigens(A_Herm)
-    eigen_imag = eigens(A_SkewHerm)
+    eigen_real, i1 = eigens(A_Herm)
+    eigen_imag, i2 = eigens(A_SkewHerm)
 
-    return eigen_real, eigen_imag
+    return eigen_real, eigen_imag, ((2 * (i1 + 1)) + (2 * (i2 + 1)))
 
 ################################################################################################
 
@@ -140,6 +141,7 @@ def real_Leja_exp(A, u, m, dt, Leja_X, c_real, Gamma_real):
     ----------
     np.real(u_real) : Polynomial interpolation of u
                       at real Leja points
+    ii * 2          : No. of matrix-vector products
 
     """
 
@@ -183,7 +185,7 @@ def real_Leja_exp(A, u, m, dt, Leja_X, c_real, Gamma_real):
     ## Solution
     u_real = poly.copy()
 
-    return np.real(u_real)
+    return np.real(u_real), ii * 2
 
 def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
     """
@@ -201,7 +203,8 @@ def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
     ----------
     np.real(u_imag) : Polynomial interpolation of u
                       at imaginary Leja points
-
+    ii * 2          : No. of matrix-vector products
+                      
     """
 
     def func(xx):
@@ -244,7 +247,7 @@ def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
     ## Solution
     u_imag = poly.copy()
 
-    return np.real(u_imag)
+    return np.real(u_imag), ii * 2
 
 ################################################################################################
 
