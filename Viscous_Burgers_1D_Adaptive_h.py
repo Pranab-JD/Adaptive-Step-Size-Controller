@@ -322,8 +322,8 @@ class Viscous_Burgers_1D_Adaptive_h:
         
         ## Create directory
         emax = '{:5.1e}'.format(self.error_tol)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/01/" + "/tol " + str(emax) + "/ETD/RE/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/01/" + "/tol " + str(emax))
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D/" + "/tol " + str(emax) + "/ETDRK2/")
+        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D/" + "/tol " + str(emax))
         
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -361,8 +361,8 @@ class Viscous_Burgers_1D_Adaptive_h:
             if time + self.dt >= self.tmax:
                 self.dt = self.tmax - time
 
-            u, u_ref, error, dt, num_mv = Richardson_Extrapolation(self.ETD, 2, self.u, self.dt, self.error_tol)
-            # u, u_ref, error, dt, num_mv = Higher_Order_Method(self.RK4, self.ETD, 2, self.u, self.dt, self.error_tol)
+            # u, u_ref, error, dt, num_mv = Richardson_Extrapolation(self.ETD, 2, self.u, self.dt, self.error_tol)
+            u, u_ref, error, dt, num_mv = Higher_Order_Method(self.RK4, self.ETDRK2, 2, self.u, self.dt, self.error_tol)
 
             counter = counter + 1
             count_mv = count_mv + num_mv
@@ -434,12 +434,12 @@ class Viscous_Burgers_1D_Adaptive_h:
 # Assign values for N, tmax, and eta
 N = 100
 t_max = 1e-2
-eta = 100
-error_tol = 1e-7
+eta = 200
+error_tol = 5e-7
 
 def main():
     sim = Viscous_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)
-    sim.run()
+    # sim.run()
     # sim.run_RKF45()
     # plt.show()
 

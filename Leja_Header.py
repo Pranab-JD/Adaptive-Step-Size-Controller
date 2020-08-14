@@ -18,6 +18,9 @@ def phi_1(z):
 def phi_2(z):
     return ((np.exp(z) - z - 1)/z**2)
 
+def phi_3(z):
+    return ((np.exp(z) - z**2/2 - z - 1)/z**3)
+
 ################################################################################################
 
 def Leja_Points():
@@ -289,6 +292,13 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
                 if (dt * (c_real + Gamma_real*xx))[ii] <= 1e-7:
                     var[ii] = 1./2. + (1./6. * (dt * (c_real + Gamma_real*xx[ii]))) \
                             + (1./24. * (dt * (c_real + Gamma_real*xx[ii]))**2)
+                    
+        elif phi_func == phi_3:
+
+            for ii in range(len(Leja_X)):
+                if (dt * (c_real + Gamma_real*xx))[ii] <= 1e-7:
+                    var[ii] = 1./6. + (1./24. * (dt * (c_real + Gamma_real*xx[ii]))) \
+                            + (1./120. * (dt * (c_real + Gamma_real*xx[ii]))**2)
         
         else:
             print('Error: Phi function not defined!!')
@@ -352,7 +362,7 @@ def imag_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag
     """
 
     def func(xx):
-        return phi_func(1j * dt * (c_imag + Gamma_imag*xx))
+        return phi_func(dt * (c_imag + Gamma_imag*xx))
 
     ## Polynomial coefficients
     coeffs = Divided_Difference(Leja_X, func)

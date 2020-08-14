@@ -13,7 +13,7 @@ Description: -
 """
 
 import os
-import math
+import shutil
 import numpy as np
 from decimal import *
 from Leja_Header import *
@@ -55,6 +55,7 @@ class Viscous_Burgers_1D_Constant_h:
         self.u_rk4 = u0.copy()                           # RK4
         self.u_etd = u0.copy()                           # ETD1
         self.u_etdrk2 = u0.copy()                        # ETDRK2
+        self.u_etdrk4 = u0.copy()                        # ETDRK4
 
     ### Parameters
     def initialize_parameters(self):
@@ -398,6 +399,202 @@ class Viscous_Burgers_1D_Constant_h:
         file.close()
 
 
+    ##############################################################################
+
+    def ETDRK4(self):
+
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/ETDRK4/B - 100/RR/")
+        
+        if os.path.exists(path):
+            shutil.rmtree(path)                     # remove previous directory with same name
+        os.makedirs(path, 0o777)                    # create directory with access rights
+        
+        ### Write simulation paramters to a file
+        file_param = open(path + 'Simulation_Parameters.txt', 'w+')
+        file_param.write('N = %d' % self.N + '\n')
+        file_param.write('eta = %f' % self.eta + '\n')
+        file_param.write('Advection CFL = %.15f' % self.adv_cfl + '\n')
+        file_param.write('Diffusion CFL = %.15f' % self.dif_cfl + '\n')
+        file_param.write('dt = %.15f' % self.dt + '\n')
+        file_param.write('Simulation time = %f' % self.tmax + '\n')
+        file_param.write('Advection: Real Leja' + '\n')
+        file_param.write('Diffusion: Real Leja')
+        file_param.close()
+
+        file = open(path + "u_etdrk4.txt", 'w+')
+        file.write(' '.join(map(str, self.u_etdrk4)) % self.u_etdrk4 + '\n')
+
+        ## Leja points
+        Leja_X = Leja_Points()
+        
+        ## Eigen values (Diffusion)
+        eigen_min_dif = 0
+        eigen_max_dif, eigen_imag_dif = Gershgorin(self.A_dif)      # Max real, imag eigen value
+
+        ############## --------------------- ##############
+
+        epsilon = 1e-7                               		        # Amplitude of perturbation
+        t = Decimal(0.0)
+        print('dt =', self.dt)
+
+        ### Time loop
+        for nn in range(self.nsteps):
+
+            if  float(t) + self.dt > self.tmax:
+                self.dt = self.tmax - float(t)
+                if self.dt >= 1e-12:
+                    print('Final dt = ', self.dt)
+                    
+            ############## --------------------- ##############
+            
+            ## Eigen values (Advection)
+            eigen_min_adv = 0
+            eigen_max_adv, eigen_imag_adv, cnt_mv = Power_iteration(self.A_adv, self.u_etdrk4, 2)     # Max real, imag eigen value
+            eigen_max_adv = eigen_max_adv * 1.2                                                       # Safety factor
+            eigen_imag_adv = eigen_imag_adv * 1.125                                                   # Safety factor
+            
+            ## c and gamma
+            c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
+            Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
+            c_imag_adv = 0
+            Gamma_imag_adv = 0.25 * (eigen_imag_adv - 0)
+            c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
+            Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
+
+            ################### Advective Term ###################
+            
+            ### Linear and Nonlinear u ###
+            
+            ### Matrix-vector product
+            A_dot_u = self.A_adv.dot(self.u_etdrk4**2)
+            
+            ### J(u) * u
+            Linear_u = (self.A_adv.dot((self.u_etdrk4 + (epsilon * self.u_etdrk4))**2) - A_dot_u)/epsilon
+
+            ### F(u_n) - (J(u_n) * u)
+            Nonlin_u = A_dot_u - Linear_u
+            
+            ############## --------------------- ##############
+            
+            ### a_n ###
+            u_lin_a = real_Leja_exp(self.A_adv, self.u_etdrk4, 2, self.dt/2, Leja_X, c_real_adv, Gamma_real_adv)[0]
+            u_nl_a = real_Leja_phi(phi_1, Nonlin_u, self.dt/2, Leja_X, c_real_adv, Gamma_real_adv) * self.dt/2
+            
+            # u_lin_a = imag_Leja_exp(self.A_adv, self.u_etdrk4, 2, self.dt/2, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
+            # u_nl_a = imag_Leja_phi(phi_1, Nonlin_u, self.dt/2, Leja_X, c_imag_adv, Gamma_imag_adv) * self.dt/2
+            
+            a_n = u_lin_a + u_nl_a
+            
+            ############## --------------------- ##############
+            
+            ### Linear and Nonlinear a ###
+            
+            ### Matrix-vector product
+            A_dot_a = self.A_adv.dot(a_n**2)
+            
+            ### J(u) * u
+            Linear_a = (self.A_adv.dot((a_n + (epsilon * a_n))**2) - A_dot_a)/epsilon
+
+            ### F(u_n) - (J(u_n) * u)
+            Nonlin_a = A_dot_a - Linear_a
+            
+            ############## --------------------- ##############
+            
+            ### b_n ###
+            u_lin_b = u_lin_a
+            u_nl_b = real_Leja_phi(phi_1, Nonlin_a, self.dt/2, Leja_X, c_real_adv, Gamma_real_adv) * self.dt/2
+            # u_nl_b = imag_Leja_phi(phi_1, Nonlin_a, self.dt/2, Leja_X, c_imag_adv, Gamma_imag_adv) * self.dt/2
+            
+            b_n = u_lin_b + u_nl_b
+            
+            ############## --------------------- ##############
+            
+            ### Linear and Nonlinear b ###
+            
+            ### Matrix-vector product
+            A_dot_b = self.A_adv.dot(b_n**2)
+            
+            ### J(u) * u
+            Linear_b = (self.A_adv.dot((b_n + (epsilon * b_n))**2) - A_dot_b)/epsilon
+
+            ### F(u_n) - (J(u_n) * u)
+            Nonlin_b = A_dot_b - Linear_b
+            
+            ############## --------------------- ##############
+            
+            ### c_n ###
+            u_lin_c = real_Leja_exp(self.A_adv, a_n, 2, self.dt/2, Leja_X, c_real_adv, Gamma_real_adv)[0]
+            u_nl_c = real_Leja_phi(phi_1, (2*Nonlin_b - Nonlin_u), self.dt/2, Leja_X, c_real_adv, Gamma_real_adv) * self.dt/2
+            
+            # u_lin_c = imag_Leja_exp(self.A_adv, a_n, 2, self.dt/2, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
+            # u_nl_c = imag_Leja_phi(phi_1, (2*Nonlin_b - Nonlin_u), self.dt/2, Leja_X, c_imag_adv, Gamma_imag_adv) * self.dt/2
+            
+            c_n = u_lin_c + u_nl_c
+            
+            ############## --------------------- ##############
+            
+            ### Linear and Nonlinear c ###
+            
+            ### Matrix-vector product
+            A_dot_c = self.A_adv.dot(c_n**2)
+            
+            ### J(u) * u
+            Linear_c = (self.A_adv.dot((c_n + (epsilon * c_n))**2) - A_dot_c)/epsilon
+
+            ### F(u_n) - (J(u_n) * u)
+            Nonlin_c = A_dot_c - Linear_c
+            
+            ############## --------------------- ##############
+            
+            ### Linear part of solution ###
+            u_lin_adv = real_Leja_exp(self.A_adv, self.u_etdrk4, 2, self.dt, Leja_X, c_real_adv, Gamma_real_adv)[0]
+            
+            # u_lin_adv = imag_Leja_exp(self.A_adv, self.u_etdrk4, 2, self.dt, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
+            
+            ### Nonlinear part of solution ###
+            u_nl_1 = real_Leja_phi(phi_1, Nonlin_u, self.dt, Leja_X, c_real_adv, Gamma_real_adv) * self.dt
+            u_nl_2 = real_Leja_phi(phi_1, (-3*Nonlin_u + 2*(Nonlin_a + Nonlin_b) - Nonlin_c), self.dt, Leja_X, c_real_adv, Gamma_real_adv) * self.dt
+            u_nl_3 = real_Leja_phi(phi_1, (4 * (Nonlin_u - Nonlin_a - Nonlin_b + Nonlin_c)), self.dt, Leja_X, c_real_adv, Gamma_real_adv) * self.dt
+            
+            # u_nl_1 = imag_Leja_phi(phi_1, Nonlin_u, self.dt, Leja_X, c_imag_adv, Gamma_imag_adv) * self.dt
+            # u_nl_2 = imag_Leja_phi(phi_1, (-3*Nonlin_u + 2*(Nonlin_a + Nonlin_b) - Nonlin_c), self.dt, Leja_X, c_imag_adv, Gamma_imag_adv) * self.dt
+            # u_nl_3 = imag_Leja_phi(phi_1, (4 * (Nonlin_u - Nonlin_a - Nonlin_b + Nonlin_c)), self.dt, Leja_X, c_imag_adv, Gamma_imag_adv) * self.dt
+            
+            ### ETDRK4 Solution ###
+            u_adv = u_lin_adv + u_nl_1 + u_nl_2 + u_nl_3
+            
+            ################### Diffusive Term ###################
+            
+            u_diff = real_Leja_exp(self.A_dif, u_adv, 1, self.dt, Leja_X, c_real_dif, Gamma_real_dif)[0]
+            
+            ############## --------------------- ##############
+
+            ### Full solution
+            u_temp = u_diff
+            
+            ## Update u and t
+            self.u_etdrk4 = u_temp.copy()
+            t = Decimal(t) + Decimal(self.dt)
+
+            ############## --------------------- ##############
+            
+            # plt.plot(self.X, self.u_etdrk4, 'b.')
+            # plt.pause(self.dt/2)
+            # plt.clf()
+
+            ############## --------------------- ##############
+
+            ## Write data to files
+            file.write(' '.join(map(str, self.u_etdrk4)) % self.u_etdrk4 + '\n')
+            
+            if nn % 200 == 0:
+                print('Time = ', float(t))
+                print('------------------------------------------------------------')
+
+        print('Final time = ', t)
+        file.close()
+
+
 ##############################################################################
 
 # Assign values for N, tmax, and eta
@@ -407,9 +604,10 @@ eta = 100
 
 def main():
     sim = Viscous_Burgers_1D_Constant_h(N, t_max, eta)
-    sim.RK4()
+    # sim.RK4()
     # sim.ETD()
     # sim.ETDRK2()
+    sim.ETDRK4()
 
 if __name__ == "__main__":
     main()
