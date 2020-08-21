@@ -6,7 +6,7 @@ Created on Mon Aug  3 11:29:22 2020
 Description: -
     This code solves the viscous Burgers' equation:
     du/dt = d^2u/dx^2 + eta * d(u^2)/dx (1D)
-    using RK4, ETD, and ETDRK2.
+    using RK4, ETD, ETDRK2, and ETDRK4.
     Advective term - 3rd order upwind scheme
     Step size is constant.
 
@@ -18,7 +18,6 @@ import numpy as np
 from decimal import *
 from Leja_Header import *
 import matplotlib.pyplot as plt
-import scipy.sparse.linalg as spla
 from scipy.sparse import csr_matrix
 
 from datetime import datetime

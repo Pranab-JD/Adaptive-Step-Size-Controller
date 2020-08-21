@@ -8,7 +8,6 @@ Description: -
 """
 
 import numpy as np
-from datetime import datetime
 
 ################################################################################################
 
@@ -92,6 +91,7 @@ def Power_iteration(A, u, m):
     -------
     eigen_val[ii] : Largest eigen value (within 2.5% accuracy)
     (ii + 1) * 2  : Number of matrix-vector products
+                    (ii + 1): No. of iterations (starts from 0)
 
     """
 
@@ -272,33 +272,32 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
                               function at real Leja points
 
     """
-
+    
     def func(xx):
         
         np.seterr(divide = 'ignore', invalid = 'ignore')
 
-        var = phi_func(dt * (c_real + Gamma_real*xx))
+        zz = (dt * (c_real + Gamma_real*xx))
+        var = phi_func(zz)
 
         if phi_func == phi_1:
         
             for ii in range(len(Leja_X)):
-                if (dt * (c_real + Gamma_real*xx))[ii] <= 1e-7:
-                    var[ii] = 1 + (0.5 * (dt * (c_real + Gamma_real*xx[ii]))) \
-                        + (1./6. * (dt * (c_real + Gamma_real*xx[ii]))**2)
+                if zz[ii] <= 1e-7:
+                    var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
             
         elif phi_func == phi_2:
-
+        
             for ii in range(len(Leja_X)):
-                if (dt * (c_real + Gamma_real*xx))[ii] <= 1e-7:
-                    var[ii] = 1./2. + (1./6. * (dt * (c_real + Gamma_real*xx[ii]))) \
-                            + (1./24. * (dt * (c_real + Gamma_real*xx[ii]))**2)
+                if zz[ii] <= 1e-7:
+                    var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
+        
                     
         elif phi_func == phi_3:
-
+        
             for ii in range(len(Leja_X)):
-                if (dt * (c_real + Gamma_real*xx))[ii] <= 1e-7:
-                    var[ii] = 1./6. + (1./24. * (dt * (c_real + Gamma_real*xx[ii]))) \
-                            + (1./120. * (dt * (c_real + Gamma_real*xx[ii]))**2)
+                if zz[ii] <= 1e-7:
+                    var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
         
         else:
             print('Error: Phi function not defined!!')
@@ -338,7 +337,7 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
 
     # Solution
     u_real = poly.copy()
-
+    
     return np.real(u_real)
 
 
@@ -360,9 +359,40 @@ def imag_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag
                               function at imaginary Leja points
 
     """
-
+    
+    # def func(xx):
+    #     return phi_func(1j * dt * (c_imag + Gamma_imag*xx))
+    
     def func(xx):
-        return phi_func(dt * (c_imag + Gamma_imag*xx))
+        
+        np.seterr(divide = 'ignore', invalid = 'ignore')
+
+        zz = (1j * dt * (c_imag + Gamma_imag*xx))
+        var = phi_func(zz)
+
+        if phi_func == phi_1:
+        
+            for ii in range(len(Leja_X)):
+                if zz[ii] <= 1e-7:
+                    var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
+            
+        elif phi_func == phi_2:
+        
+            for ii in range(len(Leja_X)):
+                if zz[ii] <= 1e-7:
+                    var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
+        
+                    
+        elif phi_func == phi_3:
+        
+            for ii in range(len(Leja_X)):
+                if zz[ii] <= 1e-7:
+                    var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
+        
+        else:
+            print('Error: Phi function not defined!!')
+
+        return var
 
     ## Polynomial coefficients
     coeffs = Divided_Difference(Leja_X, func)

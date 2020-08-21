@@ -50,7 +50,6 @@ class Inviscid_Burgers_2D_Constant_h:
         self.initialize_parameters()
         self.initialize_matrices()
         
-        
     ### Discretize the spatial domain
     def initialize_spatial_domain(self):
         self.dx = (self.xmax - self.xmin)/self.N_x
@@ -58,7 +57,6 @@ class Inviscid_Burgers_2D_Constant_h:
         self.X = np.linspace(self.xmin, self.xmax, self.N_x, endpoint = False)
         self.Y = np.linspace(self.ymin, self.ymax, self.N_y, endpoint = False)
         self.X, self.Y = np.meshgrid(self.X, self.Y)
-        
         
     ### Initial distribution    
     def initialize_U(self):
@@ -70,14 +68,12 @@ class Inviscid_Burgers_2D_Constant_h:
         self.u_etd = u0.copy()          # ETD
         self.u_etdrk2 = u0.copy()       # ETDRK2
         
-        
     ### Parameters  
     def initialize_parameters(self):
         self.dt = 0.25 * ((self.dx * self.dy)/(self.eta_y*self.dx + self.eta_x*self.dy))
         self.nsteps = int(np.ceil(self.tmax/self.dt))            	# Number of time steps
         self.Rx = self.eta_x/self.dx
         self.Ry = self.eta_y/self.dy
-        
         
     ### Operator matrices    
     def initialize_matrices(self):    

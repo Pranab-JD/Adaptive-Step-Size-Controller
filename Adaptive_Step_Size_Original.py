@@ -4,7 +4,7 @@ Created on Fri Aug  7 11:47:39 2020
 @author: Pranab JD
 
 Description: -
-        Consists of different adaptive step size methods
+        Consists of different adpative step size methods
 """
 
 import numpy as np
@@ -62,17 +62,18 @@ def Richardson_Extrapolation(method, p, u, dt, tol):
 
     return u_sol, u_ref, error, dt, counts
 
+
 ################################################################################################
 
-def Higher_Order_Method(p, method_ref, method, A_adv, A_dif, u, dt, tol):
+def Higher_Order_Method(method_ref, method, p, u, dt, tol):
     """
     Parameters
     ----------
+    method_ref  : Higher order scheme as reference (method should take in 'u', 'dt', and
+                    counts as input and return new 'u', 'dt', and counts as output)
+    method      : Time integration scheme (method should take in 'u', 'dt', and counts
+                  as input and return new 'u', 'dt', and counts as output)
     p           : Order of method
-    method_ref  : Higher order scheme as reference
-    method      : Time integration scheme (function: Solution)
-    A_adv       : Advection matrix
-    A_dif       : Diffusion matrix
     u           : Vector u
     dt          : Given dt
     tol         : Maximum tolerance
@@ -83,7 +84,6 @@ def Higher_Order_Method(p, method_ref, method, A_adv, A_dif, u, dt, tol):
     u_ref       : Reference (u)
     error       : Mean error between u_sol and u_ref (<= tol)
     dt          : New dt
-    counts      : Number of matrix-vector products
 
     """
 
@@ -93,7 +93,7 @@ def Higher_Order_Method(p, method_ref, method, A_adv, A_dif, u, dt, tol):
 
     for mm in range(n_iters):
 
-        u_ref, dt_1, c1 = method_ref(A_adv, A_dif, u, dt)
+        u_ref, dt_1, c1 = method_ref(u, dt)
 
         u_sol, dt, c2 = method(u, dt)
 
@@ -116,5 +116,6 @@ def Higher_Order_Method(p, method_ref, method, A_adv, A_dif, u, dt, tol):
             print('Max iterations reached. Check parameters!!!')
 
     return u_sol, u_ref, error, dt, counts
+
 
 ################################################################################################
