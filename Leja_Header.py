@@ -20,6 +20,9 @@ def phi_2(z):
 def phi_3(z):
     return ((np.exp(z) - z**2/2 - z - 1)/z**3)
 
+def phi_4(z):
+    return ((np.exp(z) - z**3/6 - z**2/2 - z - 1)/z**4)
+
 ################################################################################################
 
 def Leja_Points():
@@ -78,14 +81,14 @@ def Gershgorin(A):
     eig_imag = np.max(row_sum_imag)
 
     return eig_real, eig_imag
-    
+
 def Power_iteration(A, u, m):
     """
     Parameters
     ----------
     A       : N x N matrix A
     u       : Vector u
-    m       : Index of u (u^m) 
+    m       : Index of u (u^m)
 
     Returns
     -------
@@ -106,7 +109,7 @@ def Power_iteration(A, u, m):
         eigen_val = np.zeros(niters)
         vector = np.zeros(len(u))
         vector[0] = 1
-    
+
         for ii in range(niters):
 
             eigen_vector = (A.dot((u + (epsilon * vector))**m) - (A.dot(u**m)))/epsilon
@@ -134,7 +137,7 @@ def real_Leja_exp(A, u, m, dt, Leja_X, c_real, Gamma_real):
     ----------
     A               : N x N matrix A
     u               : Vector u
-    m               : Index of u (u^m) 
+    m               : Index of u (u^m)
     dt              : self.dt
     Leja_X          : Leja points
     c_real          : Shifting factor
@@ -196,7 +199,7 @@ def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
     ----------
     A               : N x N matrix A
     u               : Vector u
-    m               : Index of u (u^m) 
+    m               : Index of u (u^m)
     dt              : self.dt
     Leja_X          : Leja points
     c_imag          : Shifting factor
@@ -207,7 +210,7 @@ def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
     np.real(u_imag) : Polynomial interpolation of u
                       at imaginary Leja points
     ii * 2          : No. of matrix-vector products
-                      
+
     """
 
     def func(xx):
@@ -226,13 +229,13 @@ def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
     poly_tol = 1e-7
     epsilon = 1e-7
     scale_fact = 1/Gamma_imag                                    # Re-scaling factor
-    
+
     for ii in range(1, max_Leja_pts):
 
         shift_fact = -c_imag * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
 
         u_temp = y.copy()
-        
+
         matrix_vector_lin = (A.dot((u + (epsilon * u_temp))**m) - A.dot(u**m))/epsilon
 
         y = y * shift_fact
@@ -264,7 +267,7 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
     Leja_X                  : Leja points
     c_real                  : Shifting factor
     Gamma_real              : Scaling factor
-    
+
     Returns
     ----------
     np.real(u_real)         : Polynomial interpolation of
@@ -272,33 +275,39 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
                               function at real Leja points
 
     """
-    
+
     def func(xx):
-        
+
         np.seterr(divide = 'ignore', invalid = 'ignore')
 
         zz = (dt * (c_real + Gamma_real*xx))
         var = phi_func(zz)
 
         if phi_func == phi_1:
-        
+
             for ii in range(len(Leja_X)):
-                if zz[ii] <= 1e-7:
+                if zz[ii] <= 1e-9:
                     var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
-            
+
         elif phi_func == phi_2:
-        
+
             for ii in range(len(Leja_X)):
-                if zz[ii] <= 1e-7:
+                if zz[ii] <= 1e-9:
                     var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
-        
-                    
+
+
         elif phi_func == phi_3:
-        
+
+            for ii in range(len(Leja_X)):
+                if zz[ii] <= 1e-9:
+                    var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
+                    
+        elif phi_func == phi_4:
+
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
-                    var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
-        
+                    var[ii] = 1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + zz[ii] * (1./5040. + 1./40320.*zz[ii])))
+
         else:
             print('Error: Phi function not defined!!')
 
@@ -337,7 +346,7 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
 
     # Solution
     u_real = poly.copy()
-    
+
     return np.real(u_real)
 
 
@@ -359,36 +368,42 @@ def imag_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag
                               function at imaginary Leja points
 
     """
-    
+
     # def func(xx):
     #     return phi_func(1j * dt * (c_imag + Gamma_imag*xx))
-    
+
     def func(xx):
-        
+
         np.seterr(divide = 'ignore', invalid = 'ignore')
 
         zz = (1j * dt * (c_imag + Gamma_imag*xx))
         var = phi_func(zz)
 
         if phi_func == phi_1:
-        
+
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
                     var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
-            
+
         elif phi_func == phi_2:
-        
+
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
                     var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
-        
-                    
+
+
         elif phi_func == phi_3:
-        
+
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
                     var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
-        
+                    
+        elif phi_func == phi_4:
+
+            for ii in range(len(Leja_X)):
+                if zz[ii] <= 1e-7:
+                    var[ii] = 1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + zz[ii] * (1./5040. + 1./40320.*zz[ii])))
+
         else:
             print('Error: Phi function not defined!!')
 
