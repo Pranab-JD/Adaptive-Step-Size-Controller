@@ -131,7 +131,7 @@ def Power_iteration(A, u, m):
 
 ################################################################################################
 
-def real_Leja_exp(A, u, m, dt, Leja_X, c_real, Gamma_real):
+def real_Leja_exp(A_adv, u, m_adv, u_func, dt, Leja_X, c_real, Gamma_real):
     """
     Parameters
     ----------
@@ -158,13 +158,13 @@ def real_Leja_exp(A, u, m, dt, Leja_X, c_real, Gamma_real):
     coeffs = Divided_Difference(Leja_X, func)
 
     ## a_0 term
-    poly = u.copy()
+    poly = u_func.copy()
     poly = coeffs[0] * poly
 
     ## a_1, a_2 .... a_n terms
     max_Leja_pts = 50
-    y = u.copy()
-    poly_tol = 1e-7
+    y = u_func.copy()
+    poly_tol = 1e-8
     epsilon = 1e-7
     scale_fact = 1/Gamma_real                                    # Re-scaling factor
 
@@ -172,12 +172,13 @@ def real_Leja_exp(A, u, m, dt, Leja_X, c_real, Gamma_real):
 
         shift_fact = -c_real * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
 
-        u_temp = y.copy()
-
-        matrix_vector_lin = (A.dot((u + (epsilon * u_temp))**m) - A.dot(u**m))/epsilon
+        ## function: function to be multiplied to the matrix exponential of the Jacobian
+        function = y.copy()
+        Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) - A_adv.dot(u**m_adv))/epsilon
 
         y = y * shift_fact
-        y = y + scale_fact * matrix_vector_lin
+        y = y + scale_fact * Jacobian_function
+        
         poly = poly + coeffs[ii] * y
 
         ## If new number (next order) to be added < tol, ignore it
@@ -193,13 +194,18 @@ def real_Leja_exp(A, u, m, dt, Leja_X, c_real, Gamma_real):
 
     return np.real(u_real), ii * 2
 
-def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
+### ---------------------------------------------------------------------------------------- ###
+
+def imag_Leja_exp(A_adv, u, m_adv, u_func, dt, Leja_X, c_imag, Gamma_imag):
     """
     Parameters
     ----------
-    A               : N x N matrix A
+    A_adv           : N x N advection matrix
+    A_dif           : N x N diffusion matrix
     u               : Vector u
-    m               : Index of u (u^m)
+    m_adv           : Index of u (u^m_adv), advection
+    m_dif           : Index of u (u^m_dif), diffusion
+    u_func          : function to be multiplied to matrix exponential
     dt              : self.dt
     Leja_X          : Leja points
     c_imag          : Shifting factor
@@ -220,28 +226,29 @@ def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
     coeffs = Divided_Difference(Leja_X, func)
 
     ## a_0 term
-    poly = u.copy() + 0 * 1j
+    poly = u_func.copy() + 0 * 1j
     poly = coeffs[0] * poly
 
     ## a_1, a_2 .... a_n terms
     max_Leja_pts = 50
-    y = u.copy() + 0 * 1j
-    poly_tol = 1e-7
-    epsilon = 1e-7
+    y = u_func.copy() + 0 * 1j
+    poly_tol = 1e-12
+    epsilon = 1e-8
     scale_fact = 1/Gamma_imag                                    # Re-scaling factor
 
     for ii in range(1, max_Leja_pts):
 
         shift_fact = -c_imag * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
 
-        u_temp = y.copy()
-
-        matrix_vector_lin = (A.dot((u + (epsilon * u_temp))**m) - A.dot(u**m))/epsilon
+        ## function: function to be multiplied to the matrix exponential of the Jacobian
+        function = y.copy()
+        Jacobian_function =  (A_adv.dot((u + (epsilon * function))**m_adv) - A_adv.dot(u**m_adv))/epsilon
 
         y = y * shift_fact
-        y = y + scale_fact * matrix_vector_lin * (-1j)
-        poly = poly + coeffs[ii] * y
+        y = y + scale_fact * Jacobian_function * (-1j)
 
+        poly = poly + coeffs[ii] * y
+        
         ## If new number (next order) to be added < tol, ignore it
         if (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii]) < poly_tol:
             # print('No. of Leja points used (imag exp) = ', ii)
@@ -252,12 +259,11 @@ def imag_Leja_exp(A, u, m, dt, Leja_X, c_imag, Gamma_imag):
 
     ## Solution
     u_imag = poly.copy()
-
     return np.real(u_imag), ii * 2
 
 ################################################################################################
 
-def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real):
+def real_Leja_phi(A, u, m, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real, phi_func):
     """
     Parameters
     ----------
@@ -277,40 +283,40 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
     """
 
     def func(xx):
-
+    
         np.seterr(divide = 'ignore', invalid = 'ignore')
-
-        zz = (dt * (c_real + Gamma_real*xx))
+    
+        zz = dt * (c_real + Gamma_real*xx)
         var = phi_func(zz)
-
+    
         if phi_func == phi_1:
-
+    
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-9:
                     var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
-
+    
         elif phi_func == phi_2:
-
+    
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-9:
                     var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
-
-
+    
+    
         elif phi_func == phi_3:
-
+    
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-9:
                     var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
                     
         elif phi_func == phi_4:
-
+    
             for ii in range(len(Leja_X)):
-                if zz[ii] <= 1e-7:
+                if zz[ii] <= 1e-9:
                     var[ii] = 1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + zz[ii] * (1./5040. + 1./40320.*zz[ii])))
-
+    
         else:
             print('Error: Phi function not defined!!')
-
+    
         return var
 
     ## Polynomial coefficients
@@ -323,17 +329,21 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
     # a_1, a_2 .... a_n terms
     max_Leja_pts = 50
     y = nonlin_matrix_vector.copy()
-    poly_tol = 1e-7
+    poly_tol = 1e-8
+    epsilon = 1e-7
     scale_fact = 1/Gamma_real                                    # Re-scaling factor
 
     for ii in range(1, max_Leja_pts):
 
         shift_fact = -c_real * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
 
-        u_temp = y.copy()
+        ## function: function to be multiplied to the phi function applied to Jacobian
+        function = y.copy()
+        Jacobian_function = (A.dot((u + (epsilon * function))**m) - A.dot(u**m))/epsilon
 
         y = y * shift_fact
-        y = y + scale_fact * u_temp
+        y = y + scale_fact * Jacobian_function
+        
         poly = poly + coeffs[ii] * y
 
         # If new number (next order) to be added < tol, ignore it
@@ -347,19 +357,23 @@ def real_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_real, Gamma_real
     # Solution
     u_real = poly.copy()
 
-    return np.real(u_real)
+    return u_real, ii * 2
 
+### ---------------------------------------------------------------------------------------- ###
 
-def imag_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag):
+def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag, phi_func):
     """
     Parameters
     ----------
-    phi_func                : phi function
-    nonlin_matrix_vector    : Nonlinear part of the equation
+    A                       : N x N matrix A
+    u                       : Vector u
+    m                       : Index of u (u^m)
+    nonlin_matrix_vector    : function to be multiplied to the phi function
     dt                      : self.dt
     Leja_X                  : Leja points
     c_imag                  : Shifting factor
     Gamma_imag              : Scaling factor
+    phi_func                : phi function
 
     Returns
     ----------
@@ -368,45 +382,42 @@ def imag_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag
                               function at imaginary Leja points
 
     """
-
-    # def func(xx):
-    #     return phi_func(1j * dt * (c_imag + Gamma_imag*xx))
-
+    
     def func(xx):
-
+    
         np.seterr(divide = 'ignore', invalid = 'ignore')
-
+    
         zz = (1j * dt * (c_imag + Gamma_imag*xx))
         var = phi_func(zz)
-
+    
         if phi_func == phi_1:
-
+    
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
                     var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
-
+    
         elif phi_func == phi_2:
-
+    
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
                     var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
-
-
+    
+    
         elif phi_func == phi_3:
-
+    
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
                     var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
                     
         elif phi_func == phi_4:
-
+    
             for ii in range(len(Leja_X)):
                 if zz[ii] <= 1e-7:
                     var[ii] = 1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + zz[ii] * (1./5040. + 1./40320.*zz[ii])))
-
+    
         else:
             print('Error: Phi function not defined!!')
-
+    
         return var
 
     ## Polynomial coefficients
@@ -415,25 +426,29 @@ def imag_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag
     ## a_0 term
     poly = nonlin_matrix_vector.copy() + 0 * 1j
     poly = coeffs[0] * poly
-
+    
     ## a_1, a_2 .... a_n terms
     max_Leja_pts = 50
     y = nonlin_matrix_vector.copy() + 0 * 1j
-    poly_tol = 1e-7
+    poly_tol = 1e-5
+    epsilon = 1e-4
     scale_fact = 1/Gamma_imag                                    # Re-scaling factor
-
+    
     for ii in range(1, max_Leja_pts):
 
-        shift_fact = -c_imag * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
-
-        u_temp = y.copy()
+        shift_fact = -c_imag * scale_fact - Leja_X[ii - 1]      # Re-shifting factor
+        
+        ## function: function to be multiplied to the phi function applied to Jacobian
+        function = y.copy()
+        Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) + A_dif.dot((u + (epsilon * function))**m_dif) - A_dif.dot(u**m_dif)  - A_adv.dot(u**m_dif))/epsilon
 
         y = y * shift_fact
-        y = y + scale_fact * u_temp * (-1j)
+        y = y + scale_fact * Jacobian_function * (-1j)
+    
         poly = poly + coeffs[ii] * y
 
         ## If new number (next order) to be added < tol, ignore it
-        if (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii]) < poly_tol:
+        if ((sum(abs(y))/len(y)) * abs(coeffs[ii])) < poly_tol:
             # print('No. of Leja points used (imag phi) = ', ii)
             break
 
@@ -443,6 +458,6 @@ def imag_Leja_phi(phi_func, nonlin_matrix_vector, dt, Leja_X, c_imag, Gamma_imag
     ## Solution
     u_imag = poly.copy()
 
-    return np.real(u_imag)
+    return np.real(u_imag), ii * 2
 
 ################################################################################################
