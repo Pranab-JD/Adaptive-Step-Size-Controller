@@ -105,9 +105,9 @@ class Viscous_Burgers_1D_Adaptive_h:
         
         ## Eigen values (Advection)
         eigen_min_adv = 0
-        eigen_max_adv, eigen_imag_adv, its_1 = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
-        eigen_max_adv = eigen_max_adv * 1.2                                        # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.125                                    # Safety factor
+        eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
+        eigen_max_adv = eigen_max_adv * 1.2                                            # Safety factor
+        eigen_imag_adv = eigen_imag_adv * 1.125                                        # Safety factor
         
         ## c and gamma
         c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
@@ -115,23 +115,19 @@ class Viscous_Burgers_1D_Adaptive_h:
         c_imag_adv = 0
         Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
         
-        ################### Advective Term ###################
-    
-        u_adv, its_adv = ETD(self.A_adv, u, dt, Leja_X, c_real_adv, Gamma_real_adv, c_imag_adv, Gamma_imag_adv)
-        
-        ################### Diffusive Term ###################
-        
-        u_diff, its_dif = real_Leja_exp(self.A_dif, u_adv, 1, dt, Leja_X, c_real_dif, Gamma_real_dif)
-        
         ############## --------------------- ##############
     
-        ### Full solution
-        u_temp = u_diff
+        ### Matrix-vector function
+        f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
         
-        ## Update u and t
+        u_temp, its_loop = EXPRB43(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
+        
+        ############## --------------------- ##############
+
+        ## Update u
         u = u_temp.copy()
         
-        return u, dt, 4 + its_1 + its_adv + its_dif
+        return u, dt, 4 + its_power + its_loop
     
     
     ##############################################################################
@@ -140,8 +136,8 @@ class Viscous_Burgers_1D_Adaptive_h:
         
         ### Create directory
         emax = '{:5.1e}'.format(self.error_tol)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/A - 1/" + "/tol " + str(emax) + "/ETD/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/A - 1/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/B - 10/" + "/tol " + str(emax) + "/EXPRB43/3rd order/")
+        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/B - 10/")
         
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -155,8 +151,6 @@ class Viscous_Burgers_1D_Adaptive_h:
         file_param.write('Diffusion CFL = %.5e' % self.dif_cfl + '\n')
         file_param.write('Simulation time = %e' % self.tmax + '\n')
         file_param.write('Max. error = %e' % self.error_tol + '\n')
-        file_param.write('Advection: Imag Leja' + '\n')
-        file_param.write('Diffusion: Real Leja')
         file_param.close()
         
         ## Create files
@@ -179,7 +173,7 @@ class Viscous_Burgers_1D_Adaptive_h:
             if time + self.dt >= self.tmax:
                 self.dt = self.tmax - time
 
-            u, u_ref, error, dt, num_mv = Higher_Order_Method(2, RK4, self.Solution, self.A_adv, self.A_dif, self.u, self.dt, self.error_tol)
+            u, u_ref, error, dt, num_mv = Higher_Order_Method(3, RK4, self.Solution, self.A_adv, self.A_dif, self.u, self.dt, self.error_tol)
 
             counter = counter + 1
             count_mv = count_mv + num_mv
@@ -225,8 +219,8 @@ class Viscous_Burgers_1D_Adaptive_h:
 # Assign values for N, tmax, and eta
 N = 100
 t_max = 1e-2
-eta = 1 
-error_tol = 1e-8
+eta = 10
+error_tol = 1e-5
 
 def main():
     sim = Viscous_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)

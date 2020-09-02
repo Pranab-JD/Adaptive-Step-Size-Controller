@@ -365,9 +365,11 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
     """
     Parameters
     ----------
-    A                       : N x N matrix A
+    A_adv                   : N x N advection matrix
+    A_dif                   : N x N diffusion matrix
     u                       : Vector u
-    m                       : Index of u (u^m)
+    m_adv                   : Index of u (u^m_adv), advection
+    m_dif                   : Index of u (u^m_dif), diffusion
     nonlin_matrix_vector    : function to be multiplied to the phi function
     dt                      : self.dt
     Leja_X                  : Leja points
@@ -430,9 +432,9 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
     ## a_1, a_2 .... a_n terms
     max_Leja_pts = 50
     y = nonlin_matrix_vector.copy() + 0 * 1j
-    poly_tol = 1e-12
+    poly_tol = 1e-7
     epsilon = 1e-12
-    scale_fact = 1/Gamma_imag                                    # Re-scaling factor
+    scale_fact = 1/Gamma_imag                                   # Re-scaling factor
     
     for ii in range(1, max_Leja_pts):
 
@@ -440,7 +442,8 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
         
         ## function: function to be multiplied to the phi function applied to Jacobian
         function = y.copy()
-        Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) + A_dif.dot(u + (epsilon * function)) - A_adv.dot(u**m_adv) - A_dif.dot(u))/epsilon 
+        Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) + A_dif.dot((u + (epsilon * function))**m_dif) \
+                             - A_adv.dot(u**m_adv) - A_dif.dot(u**m_dif))/epsilon 
 
         y = y * shift_fact
         y = y + scale_fact * Jacobian_function * (-1j)
@@ -458,6 +461,6 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
     ## Solution
     u_imag = poly.copy()
 
-    return np.real(u_imag), ii * 2
+    return np.real(u_imag), ii * 4
 
 ################################################################################################

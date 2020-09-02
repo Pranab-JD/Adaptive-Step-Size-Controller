@@ -37,11 +37,6 @@ def RK4(A_adv, A_dif, u, dt):
     k3 = dt * (A_adv.dot((u + k2/2)**2) + A_dif.dot(u + k2/2))
     k4 = dt * (A_adv.dot((u + k3)**2) + A_dif.dot(u + k3))
     
-    # k1 = dt * A_adv.dot(u**2)
-    # k2 = dt * A_adv.dot((u + k1/2)**2)
-    # k3 = dt * A_adv.dot((u + k2/2)**2)
-    # k4 = dt * A_adv.dot((u + k3)**2)
-    
     ## Solution
     u_rk4 = u + 1./6.*(k1 + 2*k2 + 2*k3 + k4)
 
@@ -259,7 +254,7 @@ def EXPRB42(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
     
     u_exprb42 = u + (u_1 * dt) + (u_nl_3 * 32*dt/9)
     
-    return u_exprb42, its_a + its_1 + its_3
+    return u_exprb42, 8 + its_a + its_1 + its_3
 
 ##############################################################################
 
@@ -313,7 +308,7 @@ def EXPRB43(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
     
-    return u_exprb3, its_a + its_b + its_1 + its_3
-    # return u_exprb4, its_a + its_b + its_1 + its_3 + its_4
+    return u_exprb3, 12 + its_a + its_b + its_1 + its_3
+    # return u_exprb4, 12 + its_a + its_b + its_1 + its_3 + its_4
 
 ##############################################################################

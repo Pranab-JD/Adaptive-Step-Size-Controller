@@ -98,7 +98,7 @@ class Viscous_Burgers_1D_Constant_h:
     def Reference_Solution(self):
         
         ## Create directory
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/Reference Data/C - 100/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/Reference Data/D - 500/")
         
         if os.path.exists(path):
             shutil.rmtree(path)                         # remove previous directory with same name
@@ -130,7 +130,7 @@ class Viscous_Burgers_1D_Constant_h:
                     
             ############## --------------------- ##############
         
-            u_rk4 = RK4(self.A_adv, self.A_dif, self.u, self.dt)
+            u_rk4 = RK4(self.A_adv, self.A_dif, self.u, self.dt)[0]
             self.u = u_rk4.copy()
             t = Decimal(t) + Decimal(self.dt)
             
@@ -183,11 +183,11 @@ class Viscous_Burgers_1D_Constant_h:
         ### Matrix-vector function
         f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
         
-        u_temp = EXPRB43(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
+        u_temp = EXPRB42(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
         
         ############## --------------------- ##############
         
-        ## Update u and t
+        ## Update
         u = u_temp.copy()
         
         return u
@@ -197,7 +197,7 @@ class Viscous_Burgers_1D_Constant_h:
     def run(self):
         
         ### Create directory
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/C - 100/EXPRB3/dt 1/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/D - 500/EXPRB42/dt 1/")
         os.makedirs(os.path.dirname(path), exist_ok = True)
         
         if os.path.exists(path):
@@ -262,7 +262,7 @@ class Viscous_Burgers_1D_Constant_h:
 # Assign values for N, tmax, and eta
 N = 100
 t_max = 5 * 1e-3
-eta = 100
+eta = 500
 
 def main():
     sim = Viscous_Burgers_1D_Constant_h(N, t_max, eta)
