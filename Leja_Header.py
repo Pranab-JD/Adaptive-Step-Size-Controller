@@ -430,8 +430,8 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
     ## a_1, a_2 .... a_n terms
     max_Leja_pts = 50
     y = nonlin_matrix_vector.copy() + 0 * 1j
-    poly_tol = 1e-5
-    epsilon = 1e-4
+    poly_tol = 1e-12
+    epsilon = 1e-12
     scale_fact = 1/Gamma_imag                                    # Re-scaling factor
     
     for ii in range(1, max_Leja_pts):
@@ -440,7 +440,7 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
         
         ## function: function to be multiplied to the phi function applied to Jacobian
         function = y.copy()
-        Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) + A_dif.dot((u + (epsilon * function))**m_dif) - A_dif.dot(u**m_dif)  - A_adv.dot(u**m_dif))/epsilon
+        Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) + A_dif.dot(u + (epsilon * function)) - A_adv.dot(u**m_adv) - A_dif.dot(u))/epsilon 
 
         y = y * shift_fact
         y = y + scale_fact * Jacobian_function * (-1j)

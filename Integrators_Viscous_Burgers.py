@@ -96,13 +96,13 @@ def ETD(A, u, dt, Leja_X, c, Gamma):
     epsilon = 1e-10
     
     ### Matrix-vector product
-    A_dot_u_1 = A.dot(u**2)
+    f_u = A.dot(u**2)
     
     ### J(u) * u
-    Linear_u = (A.dot((u + (epsilon * u))**2) - A_dot_u_1)/epsilon
+    Linear_u = (A.dot((u + (epsilon * u))**2) - f_u)/epsilon
 
-    ### F(u) - (J(u) * u)
-    Nonlin_u = A_dot_u_1 - Linear_u
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u - Linear_u
     
     ############## --------------------- ##############
     
@@ -223,39 +223,39 @@ def ETDRK2(A, u, dt, Leja_X, c, Gamma):
 
 ### EXPRB42
 
-def EXPRB42(A, u, dt, Leja_X, c, Gamma):
+def EXPRB42(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
     
     epsilon = 1e-7
     
     ############## --------------------- ##############
     
-    ### Matrix-vector product
-    f_u = A.dot(u**2)
+    ### Matrix-vector function
+    f_u = A_adv.dot(u**2) + A_dif.dot(u)
 
     ### J(u) * u
-    Linear_u = (A.dot((u + (epsilon * u))**2) - f_u)/epsilon
+    Linear_u = (A_adv.dot((u + (epsilon * u))**2) + A_dif.dot((u + (epsilon * u))) - f_u)/epsilon
 
     ### F(u) = f(u) - (J(u) * u)
     Nonlin_u = f_u - Linear_u
     
     ############## --------------------- ##############
     
-    a_n_nl, its_a = imag_Leja_phi(A, u, 2, f_u, 3*dt/4, Leja_X, c, Gamma, phi_1)
+    a_n_f, its_a = imag_Leja_phi(A_adv, A_dif, u, 2, 1, f_u, 3*dt/4, Leja_X, c, Gamma, phi_1)
     
-    a_n = u + a_n_nl * 3*dt/4
+    a_n = u + a_n_f * 3*dt/4
     
     ############## --------------------- ##############
     
     ### J(u) * a
-    Linear_a = (A.dot((u + (epsilon * a_n))**2) - f_u)/epsilon
+    Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) + A_dif.dot((u + (epsilon * a_n))) - f_u)/epsilon
     
     ### F(a) = f(a) - (J(u) * a)
-    Nonlin_a = A.dot(a_n**2) - Linear_a
+    Nonlin_a = A_adv.dot(a_n**2) + A_dif.dot(a_n) - Linear_a
     
     ############## --------------------- ##############
     
-    u_1, its_1 = imag_Leja_phi(A, u, 2, f_u, dt, Leja_X, c, Gamma, phi_1)
-    u_nl_3, its_3 = imag_Leja_phi(A, u, 2, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_3)
+    u_1, its_1 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, f_u, dt, Leja_X, c, Gamma, phi_1)
+    u_nl_3, its_3 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_3)
     
     u_exprb42 = u + (u_1 * dt) + (u_nl_3 * 32*dt/9)
     
@@ -271,7 +271,7 @@ def EXPRB43(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
     
     ############## --------------------- ##############
     
-    ### Matrix-vector product
+    ### Matrix-vector function
     f_u = A_adv.dot(u**2) + A_dif.dot(u)
 
     ### J(u) * u
@@ -282,38 +282,38 @@ def EXPRB43(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
     
     ############## --------------------- ##############
     
-    # a_n_nl, its_a = imag_Leja_phi(A_adv, A_dif, u, 2, 1, f_u, dt/2, Leja_X, c, Gamma, phi_1)
-    # b_n_nl, its_b = imag_Leja_phi(A_adv, A_dif, u, 2, 1, f_u, dt, Leja_X, c, Gamma, phi_1)
-    # 
-    # a_n = u + a_n_nl * dt/2
-    # b_n = u + b_n_nl * dt
+    a_n_f, its_a = imag_Leja_phi(A_adv, A_dif, u, 2, 1, f_u, dt/2, Leja_X, c, Gamma, phi_1)
+    b_n_f, its_b = imag_Leja_phi(A_adv, A_dif, u, 2, 1, f_u, dt, Leja_X, c, Gamma, phi_1)
+    
+    a_n = u + a_n_f * dt/2
+    b_n = u + b_n_f * dt
+    
+    ############# --------------------- ##############
+    
+    ### J(u) * a
+    Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) + A_dif.dot((u + (epsilon * a_n))) - f_u)/epsilon
+    
+    ### F(a) = f(a) - (J(u) * a)
+    Nonlin_a = A_adv.dot(a_n**2) + A_dif.dot(a_n) - Linear_a
     
     ############## --------------------- ##############
     
-    # ### J(u) * a
-    # Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) + A_dif.dot((u + (epsilon * a_n))) - f_u)/epsilon
-    # 
-    # ### F(a) = f(a) - (J(u) * a)
-    # Nonlin_a = A_adv.dot(a_n**2) - Linear_a
-    # 
-    # ############## --------------------- ##############
-    # 
-    # ### J(u) * b
-    # Linear_b = (A_adv.dot((u + (epsilon * b_n))**2) + A_dif.dot((u + (epsilon * b_n))) - f_u)/epsilon
-    # 
-    # ### F(b) = f(b) - (J(u) * b)
-    # Nonlin_b = A_adv.dot(b_n**2) - Linear_b
+    ### J(u) * b
+    Linear_b = (A_adv.dot((u + (epsilon * b_n))**2) + A_dif.dot((u + (epsilon * b_n))) - f_u)/epsilon
     
-    ############## --------------------- ##############
+    ### F(b) = f(b) - (J(u) * b)
+    Nonlin_b = A_adv.dot(b_n**2) + A_dif.dot(b_n) - Linear_b
+    
+    ############# --------------------- ##############
     
     u_1, its_1 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, f_u, dt, Leja_X, c, Gamma, phi_1)
-    # u_nl_3, its_3 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, Leja_X, c, Gamma, phi_3)
-    # u_nl_4, its_4 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, Leja_X, c, Gamma, phi_4)
+    u_nl_3, its_3 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, Leja_X, c, Gamma, phi_3)
+    u_nl_4, its_4 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, Leja_X, c, Gamma, phi_4)
     
-    u_exprb3 = u + (u_1 * dt) #+ (u_nl_3 * dt)
-    #u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
+    u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
+    u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
     
-    return u_exprb3#, its_a + its_b + its_1 + its_3
+    return u_exprb3, its_a + its_b + its_1 + its_3
     # return u_exprb4, its_a + its_b + its_1 + its_3 + its_4
 
 ##############################################################################

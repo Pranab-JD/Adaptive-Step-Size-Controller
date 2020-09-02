@@ -62,7 +62,7 @@ class Viscous_Burgers_1D_Constant_h:
         self.dif_cfl = self.dx**2/2
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
-        self.dt = 0.01 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
+        self.dt = 1 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
         self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
         self.R = 1./6. * self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
@@ -169,7 +169,7 @@ class Viscous_Burgers_1D_Constant_h:
         ## Eigen values (Advection)
         eigen_min_adv = 0
         eigen_max_adv, eigen_imag_adv, its_1 = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
-        eigen_max_adv = eigen_max_adv * 1.5                                       # Safety factor
+        eigen_max_adv = eigen_max_adv * 1.25                                       # Safety factor
         eigen_imag_adv = eigen_imag_adv * 1.125                                    # Safety factor
         
         ## c and gamma
@@ -180,7 +180,10 @@ class Viscous_Burgers_1D_Constant_h:
         
         ############## --------------------- ##############
         
-        u_temp = EXPRB43(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
+        ### Matrix-vector function
+        f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
+        
+        u_temp = EXPRB43(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
         
         ############## --------------------- ##############
         
@@ -194,7 +197,7 @@ class Viscous_Burgers_1D_Constant_h:
     def run(self):
         
         ### Create directory
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/C - 100/EXPRB3/dt 0.01/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/C - 100/EXPRB3/dt 1/")
         os.makedirs(os.path.dirname(path), exist_ok = True)
         
         if os.path.exists(path):
@@ -242,7 +245,7 @@ class Viscous_Burgers_1D_Constant_h:
 
             ### Test plots
             # plt.plot(self.X, self.u, 'b.')
-            # plt.pause(self.dt)
+            # plt.pause(self.dt/2)
             # plt.clf()
             
             ############## --------------------- ##############
