@@ -196,15 +196,15 @@ def real_Leja_exp(A_adv, u, m_adv, u_func, dt, Leja_X, c_real, Gamma_real):
 
 ### ---------------------------------------------------------------------------------------- ###
 
-def imag_Leja_exp(A_adv, u, m_adv, u_func, dt, Leja_X, c_imag, Gamma_imag):
+def imag_Leja_exp(A_adv, A_dif, u, m_adv, m_dif, u_func, dt, Leja_X, c_imag, Gamma_imag):
     """
     Parameters
     ----------
     A_adv           : N x N advection matrix
     A_dif           : N x N diffusion matrix
     u               : Vector u
-    m_adv           : Index of u (u^m_adv), advection
-    m_dif           : Index of u (u^m_dif), diffusion
+    m_adv           : Index of u (u^m_adv); advection
+    m_dif           : Index of u (u^m_dif); diffusion
     u_func          : function to be multiplied to matrix exponential
     dt              : self.dt
     Leja_X          : Leja points
@@ -215,7 +215,7 @@ def imag_Leja_exp(A_adv, u, m_adv, u_func, dt, Leja_X, c_imag, Gamma_imag):
     ----------
     np.real(u_imag) : Polynomial interpolation of u
                       at imaginary Leja points
-    ii * 2          : No. of matrix-vector products
+    ii * 4          : No. of matrix-vector products
 
     """
 
@@ -232,34 +232,36 @@ def imag_Leja_exp(A_adv, u, m_adv, u_func, dt, Leja_X, c_imag, Gamma_imag):
     ## a_1, a_2 .... a_n terms
     max_Leja_pts = 50
     y = u_func.copy() + 0 * 1j
-    poly_tol = 1e-12
-    epsilon = 1e-8
-    scale_fact = 1/Gamma_imag                                    # Re-scaling factor
-
+    poly_tol = 1e-7
+    epsilon = 1e-12
+    scale_fact = 1/Gamma_imag                                   # Re-scaling factor
+    
     for ii in range(1, max_Leja_pts):
 
-        shift_fact = -c_imag * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
-
-        ## function: function to be multiplied to the matrix exponential of the Jacobian
+        shift_fact = -c_imag * scale_fact - Leja_X[ii - 1]      # Re-shifting factor
+        
+        ## function: function to be multiplied to the phi function applied to Jacobian
         function = y.copy()
-        Jacobian_function =  (A_adv.dot((u + (epsilon * function))**m_adv) - A_adv.dot(u**m_adv))/epsilon
+        Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) + A_dif.dot((u + (epsilon * function))**m_dif) \
+                             - A_adv.dot(u**m_adv) - A_dif.dot(u**m_dif))/epsilon 
 
         y = y * shift_fact
         y = y + scale_fact * Jacobian_function * (-1j)
-
+    
         poly = poly + coeffs[ii] * y
-        
+
         ## If new number (next order) to be added < tol, ignore it
-        if (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii]) < poly_tol:
-            # print('No. of Leja points used (imag exp) = ', ii)
+        if ((sum(abs(y))/len(y)) * abs(coeffs[ii])) < poly_tol:
+            # print('No. of Leja points used (imag phi) = ', ii)
             break
 
         if ii >= max_Leja_pts - 1:
-            print('ERROR: max number of Leja iterations reached (imag exp)')
+            print('ERROR: max number of Leja iterations reached (imag phi)')
 
     ## Solution
     u_imag = poly.copy()
-    return np.real(u_imag), ii * 2
+
+    return np.real(u_imag), ii * 4
 
 ################################################################################################
 
@@ -370,7 +372,7 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
     u                       : Vector u
     m_adv                   : Index of u (u^m_adv), advection
     m_dif                   : Index of u (u^m_dif), diffusion
-    nonlin_matrix_vector    : function to be multiplied to the phi function
+    nonlin_matrix_vector    : function to be multiplied to phi function
     dt                      : self.dt
     Leja_X                  : Leja points
     c_imag                  : Shifting factor
@@ -382,6 +384,7 @@ def imag_Leja_phi(A_adv, A_dif, u, m_adv, m_dif, nonlin_matrix_vector, dt, Leja_
     np.real(u_imag)         : Polynomial interpolation of
                               nonlinear part using the phi_1
                               function at imaginary Leja points
+    ii * 4                  : No. of matrix-vector products
 
     """
     

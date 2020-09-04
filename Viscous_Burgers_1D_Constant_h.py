@@ -62,7 +62,7 @@ class Viscous_Burgers_1D_Constant_h:
         self.dif_cfl = self.dx**2/2
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
-        self.dt = 1 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
+        self.dt = 0.05 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
         self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
         self.R = 1./6. * self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
@@ -183,7 +183,7 @@ class Viscous_Burgers_1D_Constant_h:
         ### Matrix-vector function
         f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
         
-        u_temp = EXPRB42(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
+        u_temp = ETD(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
         
         ############## --------------------- ##############
         
@@ -197,7 +197,7 @@ class Viscous_Burgers_1D_Constant_h:
     def run(self):
         
         ### Create directory
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/D - 500/EXPRB42/dt 1/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/C - 100/ETD/dt 0.05/")
         os.makedirs(os.path.dirname(path), exist_ok = True)
         
         if os.path.exists(path):
@@ -228,7 +228,7 @@ class Viscous_Burgers_1D_Constant_h:
 
             if  float(t) + self.dt > self.tmax:
                 self.dt = self.tmax - float(t)
-                if self.dt >= 1e-13:
+                if self.dt >= 1e-12:
                     print('Final dt = ', self.dt)
                     
             ############## --------------------- ##############
@@ -262,7 +262,7 @@ class Viscous_Burgers_1D_Constant_h:
 # Assign values for N, tmax, and eta
 N = 100
 t_max = 5 * 1e-3
-eta = 500
+eta = 100
 
 def main():
     sim = Viscous_Burgers_1D_Constant_h(N, t_max, eta)

@@ -86,15 +86,17 @@ def RKF5(A_adv, A_dif, u, dt):
 
 ### ETD
 
-def ETD(A, u, dt, Leja_X, c, Gamma):
+def ETD(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
     
-    epsilon = 1e-10
+    epsilon = 1e-12
     
-    ### Matrix-vector product
-    f_u = A.dot(u**2)
+    ############## --------------------- ##############
     
+    ### Matrix-vector function
+    f_u = A_adv.dot(u**2) + A_dif.dot(u)
+
     ### J(u) * u
-    Linear_u = (A.dot((u + (epsilon * u))**2) - f_u)/epsilon
+    Linear_u = (A_adv.dot((u + (epsilon * u))**2) + A_dif.dot((u + (epsilon * u))) - f_u)/epsilon
 
     ### F(u) = f(u) - (J(u) * u)
     Nonlin_u = f_u - Linear_u
@@ -104,8 +106,8 @@ def ETD(A, u, dt, Leja_X, c, Gamma):
     def Real_Leja():
 
         ### Solution
-        u_lin, its_lin = real_Leja_exp(A, u, 2, u, dt, Leja_X, c, Gamma)
-        u_nl, its_nl = real_Leja_phi(A, u, 2, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
+        u_lin, its_lin = real_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
+        u_nl, its_nl = real_Leja_phi(A_adv, A_dif, u, 2, 1, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
         u_nl = u_nl * dt
         
         return u_lin, u_nl, its_lin + its_nl + 2
@@ -115,11 +117,11 @@ def ETD(A, u, dt, Leja_X, c, Gamma):
     def Imag_Leja():
         
         ### Solution
-        u_lin, its_lin = imag_Leja_exp(A, u, 2, u, dt, Leja_X, c, Gamma)
-        u_nl, its_nl = imag_Leja_phi(A, u, 2, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
+        u_lin, its_lin = imag_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
+        u_nl, its_nl = imag_Leja_phi(A_adv, A_dif, u, 2, 1, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
         u_nl = u_nl * dt
         
-        return u_lin, u_nl, its_lin + its_nl + 2
+        return u_lin, u_nl, its_lin + its_nl + 4
     
     ############## --------------------- ##############
     
@@ -135,26 +137,28 @@ def ETD(A, u, dt, Leja_X, c, Gamma):
 
 ### ETDRK2
 
-def ETDRK2(A, u, dt, Leja_X, c, Gamma):
+def ETDRK2(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
 
-    epsilon = 1e-8
+    epsilon = 1e-12
     
-    ### Matrix-vector product
-    A_dot_u_1 = A.dot(u**2)
+    ############## --------------------- ##############
     
+    ### Matrix-vector function
+    f_u = A_adv.dot(u**2) + A_dif.dot(u)
+
     ### J(u) * u
-    Linear_u = (A.dot((u + (epsilon * u))**2) - A_dot_u_1)/epsilon
+    Linear_u = (A_adv.dot((u + (epsilon * u))**2) + A_dif.dot((u + (epsilon * u))) - f_u)/epsilon
 
-    ### F(u) - (J(u) * u)
-    Nonlin_u = A_dot_u_1 - Linear_u
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u - Linear_u
 
     ############## --------------------- ##############
 
     def Real_Leja():
         
         ### Solution
-        u_lin, its_lin = real_Leja_exp(A, u, 2, u, dt, Leja_X, c, Gamma)
-        u_nl_1, its_nl_1 = real_Leja_phi(A, u, 2, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
+        u_lin, its_lin = real_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
+        u_nl_1, its_nl_1 = real_Leja_phi(A_adv, A_dif, u, 2, 1, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
         u_nl_1 = u_nl_1 * dt
         
         a_n = u_lin + u_nl_1
@@ -162,27 +166,25 @@ def ETDRK2(A, u, dt, Leja_X, c, Gamma):
         ############## --------------------- ##############
 
         ### RK2 ###
-        A_dot_u_2 = A.dot(a_n**2)
+        ### J(u) * a
+        Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) + A_dif.dot((u + (epsilon * a_n))) - f_u)/epsilon
         
-        ### J(u) * u
-        Linear_u2 = (A.dot((a_n + (epsilon * u))**2) - A_dot_u_2)/epsilon
-    
-        ### F(u) - (J(u) * u)
-        Nonlin_u2 = A_dot_u_2 - Linear_u2
+        ### F(a) = f(a) - (J(u) * a)
+        Nonlin_a = A_adv.dot(a_n**2) + A_dif.dot(a_n) - Linear_a
         
         ## Nonlinear Term
-        u_nl_2, its_nl_2 = real_Leja_phi(A, u, 2, (Nonlin_u2 - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
+        u_nl_2, its_nl_2 = real_Leja_phi(A_adv, A_dif, u, 2, 1, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
         u_nl_2 = u_nl_2 * dt
         
-        return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 4
+        return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 8
 
     ############## --------------------- ##############
 
     def Imag_Leja():
         
         ### Solution
-        u_lin, its_lin = imag_Leja_exp(A, u, 2, u, dt, Leja_X, c, Gamma)
-        u_nl_1, its_nl_1 = imag_Leja_phi(A, u, 2, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
+        u_lin, its_lin = imag_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
+        u_nl_1, its_nl_1 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
         u_nl_1 = u_nl_1 * dt
         
         a_n = u_lin + u_nl_1
@@ -190,19 +192,17 @@ def ETDRK2(A, u, dt, Leja_X, c, Gamma):
         ############## --------------------- ##############
     
         ### RK2 ###
-        A_dot_u_2 = A.dot(a_n**2)
+        ### J(u) * a
+        Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) + A_dif.dot((u + (epsilon * a_n))) - f_u)/epsilon
         
-        ### J(u) * u
-        Linear_u2 = (A.dot((a_n + (epsilon * u))**2) - A_dot_u_2)/epsilon
-    
-        ### F(u) - (J(u) * u)
-        Nonlin_u2 = A_dot_u_2 - Linear_u2
+        ### F(a) = f(a) - (J(u) * a)
+        Nonlin_a = A_adv.dot(a_n**2) + A_dif.dot(a_n) - Linear_a
         
         ## Nonlinear Term
-        u_nl_2, its_nl_2 = imag_Leja_phi(A, u, 2, (Nonlin_u2 - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
+        u_nl_2, its_nl_2 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
         u_nl_2 = u_nl_2 * dt
         
-        return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 4
+        return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 8
     
     ############## --------------------- ##############
     
@@ -308,7 +308,7 @@ def EXPRB43(A_adv, A_dif, u, dt, Leja_X, c, Gamma):
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
     
-    return u_exprb3, 12 + its_a + its_b + its_1 + its_3
-    # return u_exprb4, 12 + its_a + its_b + its_1 + its_3 + its_4
+    # return u_exprb3, 12 + its_a + its_b + its_1 + its_3
+    return u_exprb4, 12 + its_a + its_b + its_1 + its_3 + its_4
 
 ##############################################################################

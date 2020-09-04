@@ -120,14 +120,14 @@ class Viscous_Burgers_1D_Adaptive_h:
         ### Matrix-vector function
         f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
         
-        u_temp, its_loop = EXPRB43(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
+        u_temp, its_method = ETD(self.A_adv, self.A_dif, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
         
         ############## --------------------- ##############
 
         ## Update u
         u = u_temp.copy()
         
-        return u, dt, 4 + its_power + its_loop
+        return u, dt, 4 + its_power + its_method
     
     
     ##############################################################################
@@ -136,7 +136,7 @@ class Viscous_Burgers_1D_Adaptive_h:
         
         ### Create directory
         emax = '{:5.1e}'.format(self.error_tol)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/B - 10/" + "/tol " + str(emax) + "/EXPRB43/3rd order/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/B - 10/" + "/tol " + str(emax) + "/ETD/")
         path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/B - 10/")
         
         if os.path.exists(path):
@@ -173,7 +173,7 @@ class Viscous_Burgers_1D_Adaptive_h:
             if time + self.dt >= self.tmax:
                 self.dt = self.tmax - time
 
-            u, u_ref, error, dt, num_mv = Higher_Order_Method(3, RK4, self.Solution, self.A_adv, self.A_dif, self.u, self.dt, self.error_tol)
+            u, u_ref, error, dt, num_mv = Higher_Order_Method(2, RK4, self.Solution, self.A_adv, self.A_dif, self.u, self.dt, self.error_tol)
 
             counter = counter + 1
             count_mv = count_mv + num_mv
@@ -220,7 +220,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 N = 100
 t_max = 1e-2
 eta = 10
-error_tol = 1e-5
+error_tol = 5*1e-9
 
 def main():
     sim = Viscous_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)

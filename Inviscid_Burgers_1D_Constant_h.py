@@ -7,7 +7,7 @@ Description: -
     This code solves the inviscid Burgers' Equation:
     du/dt = eta * d(u^2)/dx + g(u) (1D)
     using RK4, RKF5, Crank-Nicolson, SDIRK23,
-    ETD, and ETDRK2. 
+    ETD, and ETDRK2.
     Advective term - 1st order upwind scheme
     Step size is constant.
 
@@ -72,7 +72,7 @@ class Inviscid_Burgers_1D_Constant_h:
 
     ### Operator matrices
     def initialize_matrices(self):
-        self.A = np.zeros((self.N, self.N))              
+        self.A = np.zeros((self.N, self.N))
 
         ## Factor of 1/2 - conservative Burger's equation
         for ij in range(self.N):
@@ -80,7 +80,7 @@ class Inviscid_Burgers_1D_Constant_h:
             self.A[ij, int(ij + 1) % self.N] =  self.R/2
             self.A[ij, ij % self.N] = - self.R/2
             # self.A[ij, int(ij - 1) % self.N] = -2 * self.R/2
-            
+
         self.A = csr_matrix(self.A)
 
     ##############################################################################
@@ -143,7 +143,7 @@ class Inviscid_Burgers_1D_Constant_h:
     ##############################################################################
 
     def RK4(self):
-        
+
         t = Decimal(0.0)
 
         path = './Reference Data/t_max 0.004/'
@@ -152,7 +152,7 @@ class Inviscid_Burgers_1D_Constant_h:
         file_rk4 = open(path + "u_rk4.txt", 'w+')
         file_time = open(path + "time.txt", 'w+')
         file_rk4.write(' '.join(map(str, self.u_rk4)) % self.u_rk4 + '\n')
-        file_time.write('{}'.format(t) + '\n')      
+        file_time.write('{}'.format(t) + '\n')
 
         ## Time loop
         for nn in range(self.nsteps):
@@ -161,10 +161,10 @@ class Inviscid_Burgers_1D_Constant_h:
                 self.dt = self.tmax - float(t)
                 if self.dt >= 1e-12:
                     print('Final dt = ', self.dt)
-                
-            k1 = self.dt * self.A.dot(self.u_rk4**2)         
+
+            k1 = self.dt * self.A.dot(self.u_rk4**2)
             k2 = self.dt * self.A.dot((self.u_rk4 + k1/2)**2)
-            k3 = self.dt * self.A.dot((self.u_rk4 + k2/2)**2)           
+            k3 = self.dt * self.A.dot((self.u_rk4 + k2/2)**2)
             k4 = self.dt * self.A.dot((self.u_rk4 + k3)**2)
 
             ## Solution
@@ -178,10 +178,10 @@ class Inviscid_Burgers_1D_Constant_h:
 
             ## Write data to files
             file_rk4.write(' '.join(map(str, self.u_rk4)) % self.u_rk4 + '\n')
-            file_time.write('{}'.format(t) + '\n')  
+            file_time.write('{}'.format(t) + '\n')
 
-            if nn % 50 == 0:          
-                print('Time = ', float(t))      
+            if nn % 50 == 0:
+                print('Time = ', float(t))
                 print('------------------------------------------------------------')
 
         ### Write final data to file
@@ -430,13 +430,13 @@ class Inviscid_Burgers_1D_Constant_h:
 
         ## Leja points
         Leja_X = Leja_Points()
-        
+
         ############## --------------------- ##############
 
         epsilon = 1e-7                               		      # Amplitude of perturbation
         t = Decimal(0.0)
         print('dt =', self.dt)
-        
+
         ### Time loop
         for nn in range(self.nsteps):
 
@@ -446,18 +446,18 @@ class Inviscid_Burgers_1D_Constant_h:
                     print('Final dt = ', self.dt)
 
             ############## --------------------- ##############
-            
+
             ## Eigen Values
             eigen_min = 0
             eigen_max, eigen_imag = Power_iteration(self.A, self.u_etd, 2)      # Max real, imag eigen value
             eigen_max = eigen_max * 1.2                                         # Safety factor
             eigen_imag = eigen_imag * 1.125                                     # Safety factor
-            
+
             c_real = 0.5 * (eigen_max + eigen_min)
             Gamma_real = 0.25 * (eigen_max - eigen_min)
             c_imag = 0
-            Gamma_imag = 0.25 * (eigen_imag - (-eigen_imag))  
-            
+            Gamma_imag = 0.25 * (eigen_imag - (-eigen_imag))
+
             ############## --------------------- ##############
 
             ### Matrix-vector product
@@ -468,12 +468,12 @@ class Inviscid_Burgers_1D_Constant_h:
 
             ### F(u) - (J(u) * u)
             Nonlin_u = A_dot_u_1 - Linear_u
-            
+
             ## Linear Term
             # u_lin = real_Leja_exp(self.A, self.u_etd, 2, self.dt, Leja_X, c_real, Gamma_real)
             u_lin = imag_Leja_exp(self.A, self.u_etd, 2, self.dt, Leja_X, c_imag, Gamma_imag)
 
-            ## Nonlinear Term 
+            ## Nonlinear Term
             # u_nl = real_Leja_phi(phi_1, Nonlin_u, self.dt, Leja_X, c_real, Gamma_real) * self.dt
             u_nl = imag_Leja_phi(phi_1, Nonlin_u, self.dt, Leja_X, c_imag, Gamma_imag) * self.dt
 
@@ -498,7 +498,7 @@ class Inviscid_Burgers_1D_Constant_h:
             file.write(' '.join(map(str, self.u_etd)) % self.u_etd + '\n')
 
             if nn % 100 == 0:
-                print('Time = ', float(t))    
+                print('Time = ', float(t))
                 print('------------------------------------------------------------')
 
         print('Final time = ', t)
@@ -520,7 +520,7 @@ class Inviscid_Burgers_1D_Constant_h:
         file_param.write('Simulation time = %f' % self.tmax + '\n')
         file_param.write('Real Leja')
         file_param.close()
-        
+
         file = open(path + "u_ETDRK2.txt", 'w+')
         file.write(' '.join(map(str, self.u_etdrk2)) % self.u_etdrk2 + '\n')
 
@@ -540,19 +540,19 @@ class Inviscid_Burgers_1D_Constant_h:
                 self.dt = self.tmax - float(t)
                 if self.dt >= 1e-12:
                     print('Final dt = ', self.dt)
-                    
+
             ############## --------------------- ##############
-            
+
             ## Eigen Values
             eigen_min = 0
             eigen_max, eigen_imag = Power_iteration(self.A, self.u_etdrk2, 2)       # Max real, imag eigen value
             eigen_max = eigen_max * 1.2                                             # Safety factor
             eigen_imag = eigen_imag * 1.125                                         # Safety factor
-            
+
             c_real = 0.5 * (eigen_max + eigen_min)
             Gamma_real = 0.25 * (eigen_max - eigen_min)
             c_imag = 0
-            Gamma_imag = 0.25 * (eigen_imag - (-eigen_imag))  
+            Gamma_imag = 0.25 * (eigen_imag - (-eigen_imag))
 
             ############## --------------------- ##############
 
@@ -564,12 +564,12 @@ class Inviscid_Burgers_1D_Constant_h:
 
             ### F(u) - (J(u) * u)
             Nonlin_u = A_dot_u_1 - Linear_u
-            
+
             ## Linear Term
             u_lin = real_Leja_exp(self.A, self.u_etdrk2, 2, self.dt, Leja_X, c_real, Gamma_real)
             # u_lin = imag_Leja_exp(self.A, self.u_etdrk2, 2, self.dt, Leja_X, c_imag, Gamma_imag)
 
-            ## Nonlinear Term 
+            ## Nonlinear Term
             u_nl = real_Leja_phi(phi_1, Nonlin_u, self.dt, Leja_X, c_real, Gamma_real) * self.dt
             # u_nl = imag_Leja_phi(phi_1, Nonlin_u, self.dt, Leja_X, c_imag, Gamma_imag) * self.dt
 
@@ -579,31 +579,31 @@ class Inviscid_Burgers_1D_Constant_h:
             a_n = u_lin + u_nl
 
             ############## --------------------- ##############
-            
+
             ### ETDRK2 ###
             A_dot_u_2 = self.A.dot(a_n**2)
-            
+
             ### J(u) * u
             Linear_u2 = (self.A.dot((a_n + (epsilon * a_n))**2) - A_dot_u_2)/epsilon
 
             ### F(u) - (J(u) * u)
             Nonlin_u2 = A_dot_u_2 - Linear_u2
-            
-            ## Nonlinear Term 
+
+            ## Nonlinear Term
             u_nl_2 = real_Leja_phi(phi_2, (Nonlin_u2 - Nonlin_u), self.dt, Leja_X, c_real, Gamma_real) * self.dt
             # u_nl_2 = imag_Leja_phi(phi_2, (Nonlin_u2 - Nonlin_u), self.dt, Leja_X, c_imag, Gamma_imag) * self.dt
-            
+
             ############## --------------------- ##############
 
             ### Full solution
             u_temp = a_n + u_nl_2
-            
+
             ## Update u and t
             self.u_etdrk2 = u_temp.copy()
             t = Decimal(t) + Decimal(self.dt)
 
             ############## --------------------- ##############
-            
+
             # plt.plot(self.X, self.u_etdrk2, 'bo')
             # plt.pause(self.dt)
             # plt.clf()
