@@ -17,8 +17,9 @@ import numpy as np
 from decimal import *
 from matplotlib import cm
 import matplotlib.pyplot as plt
+from Leja_Interpolation import *
 import scipy.sparse.linalg as spla
-from scipy.sparse import csr_matrix, kron, identity
+from scipy.sparse import kron, identity
 
 from datetime import datetime
 
@@ -58,15 +59,11 @@ class Diffusion_Advection_2D_Constant_h:
     ### Initial distribution
     def initialize_U(self):
         u0 = np.exp((-(self.X - 0.5)**2 - (self.Y - 0.5)**2)/(2 * self.sigma_init**2))
-        self.u_CN = u0.copy()           	# Crank-Nicolson
-        self.u_EI = u0.copy()               # Exponential Integration
-        self.u_23 = u0.copy()           	# SDIRK23
-        self.u_rk4 = u0.copy()           	# RK4
-
+        self.u = u0.copy()           	
 
     ### Parameters
     def initialize_parameters(self):
-        self.dt = 0.25 * min(((self.dx**2 * self.dy**2)/(self.dx**2 + self.dy**2)), ((self.dx * self.dy)/(self.eta_y*self.dx + self.eta_x*self.dy)))
+        self.dt = 0.5 * min(((self.dx**2 * self.dy**2)/(self.dx**2 + self.dy**2)), ((self.dx * self.dy)/(self.eta_y*self.dx + self.eta_x*self.dy)))
         self.nsteps = int(np.ceil(self.tmax/self.dt))           	    # number of time steps
         self.Rx = self.eta_x/self.dx
         self.Ry = self.eta_y/self.dy
@@ -101,7 +98,8 @@ class Diffusion_Advection_2D_Constant_h:
 
         self.A = kron(identity(self.N_y), self.Adv_x) + kron(self.Adv_y, identity(self.N_x)) + \
                  kron(identity(self.N_y), self.Dif_x) + kron(self.Dif_y, identity(self.N_x))
-
+    
+    
     ##############################################################################
 
     def RK4(self):
@@ -195,172 +193,11 @@ class Diffusion_Advection_2D_Constant_h:
 
         ############## --------------------- ##############
 
-        def Leja_Points():
-            """
-            Load Leja points from binary file
-
-            """
-            dt = np.dtype("f8")
-            return np.fromfile('real_leja_d.bin', dtype = dt)
-
-        Leja_X = Leja_Points()
-
-        def Divided_Difference(X, func):
-            """
-            Parameters
-            ----------
-            X       : Leja points
-            func    : func(X)
-
-            Returns
-            -------
-            div_diff : Polynomial coefficients
-
-            """
-
-            div_diff = func(X)
-
-            for ii in range(1, int(len(X)/10)):
-                for jj in range(ii):
-                    div_diff[ii] = (div_diff[jj] - div_diff[ii])/(X[jj] - X[ii])
-
-            return div_diff
-
-        def Gershgorin(A):
-            """
-            Parameters
-            ----------
-            A       : N x N matrix A
-            Returns
-            -------
-            eig_real : Largest real eigen value
-            eig_imag : Largest imaginary eigen value
-            """
-        
-            A_Herm = (A + A.T.conj())/2
-            A_SkewHerm = (A - A.T.conj())/2
-        
-            row_sum_real = np.zeros(np.shape(A)[0])
-            row_sum_imag = np.zeros(np.shape(A)[0])
-        
-            for ii in range(len(row_sum_real)):
-                row_sum_real[ii] = np.sum(abs(A_Herm[ii, :]))
-                row_sum_imag[ii] = np.sum(abs(A_SkewHerm[ii, :]))
-        
-            eig_real = np.max(row_sum_real)
-            eig_imag = np.max(row_sum_imag)
-        
-            return eig_real, eig_imag
-
-        ############## --------------------- ##############
-
-        def real_Leja(u):
-            """
-            Parameters
-            ----------
-            u                : Vector u
-            
-            Returns
-            -------
-            np.real(u_real)  : Polynomial interpolation of u
-                               at real Leja points
-            
-            """
-
-            def func(xx):
-                return np.exp(self.dt * (c_real + Gamma_real*xx))
-
-            ## Polynomial coefficients
-            coeffs = Divided_Difference(Leja_X, func)
-
-            ## a_0 term
-            poly = u.copy()
-            poly = coeffs[0] * poly
-            
-            ## a_1, a_2 .... a_n terms
-            max_Leja_pts = 400
-            y = u.copy()
-            poly_tol = 1e-7
-            scale_fact = 1/Gamma_real                                    # Re-scaling factor
-
-            for ii in range(1, max_Leja_pts):
-
-                shift_fact = -c_real * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
-
-                u_temp = y.copy()
-                y = y * shift_fact
-                y = y + scale_fact * self.A.dot(u_temp)
-                poly = poly + coeffs[ii] * y
-
-                ## If new number (next order) to be added < tol, ignore it
-                if (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii]) < poly_tol:
-                    # print('No. of Leja points used = ', ii)
-                    break
-
-                if ii >= max_Leja_pts - 1:
-                    print('ERROR: max number of Leja iterations reached')
-
-            ## Solution
-            u_real = poly.copy()
-
-            return np.real(u_real)
-
-        def imag_Leja(u):
-            """
-            Parameters
-            ----------
-            u                : Vector u
-            
-            Returns
-            ----------
-            np.real(u_imag)  : Polynomial interpolation of u
-                               at imaginary Leja points
-            
-            """
-
-            def func(xx):
-                return np.exp(1j * self.dt * (c_imag + Gamma_imag*xx))
-
-            ## Polynomial coefficients
-            coeffs = Divided_Difference(Leja_X, func)
-
-            ## a_0 term
-            poly = u.copy() + 0 * 1j
-            poly = coeffs[0] * poly
-
-            ## a_1, a_2 .... a_n terms
-            max_Leja_pts = 400
-            y = u.copy() + 0 * 1j
-            poly_tol = 1e-7
-            scale_fact = 1/Gamma_imag                                    # Re-scaling factor
-
-            for ii in range(1, max_Leja_pts):
-
-                shift_fact = -c_imag * scale_fact - Leja_X[ii - 1]       # Re-shifting factor
-
-                u_temp = y.copy()
-                y = y * shift_fact
-                y = y + scale_fact * self.A.dot(u_temp) * (-1j)
-                poly = poly + coeffs[ii] * y
-
-                ## If new number (next order) to be added < tol, ignore it
-                if (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii]) < poly_tol:
-                    # print('No. of Leja points used = ', ii)
-                    break
-
-                if ii >= max_Leja_pts - 1:
-                    print('ERROR: max number of Leja iterations reached')
-
-            ## Solution
-            u_imag = poly.copy()
-
-            return np.real(u_imag)
-
         print('------------------------------------------------------------')
 
-        self.u_EI = self.u_EI.reshape(self.N_x * self.N_y)
+        self.u = self.u.reshape(self.N_x * self.N_y)
         print('Shape of A = ', np.shape(self.A))
-        print('Shape of u = ', np.shape(self.u_EI))
+        print('Shape of u = ', np.shape(self.u))
 
         print('------------------------------------------------------------')
 
@@ -387,14 +224,14 @@ class Diffusion_Advection_2D_Constant_h:
                     print('Final time = ', float(t) + self.dt)
                     
             ### Solution
-            # u_sol = real_Leja(self.u_EI)
-            u_sol = imag_Leja(self.u_EI)
+            # u_sol, its_sol = real_Leja_exp(self.A, self.u, self.dt, c_real, Gamma_real)
+            u_sol, its_sol = imag_Leja_exp(self.A, self.u, self.dt, c_imag, Gamma_imag)
 
             ### Update t and u
-            self.u_EI = u_sol.copy()
+            self.u = u_sol.copy()
             t = Decimal(t) + Decimal(self.dt)
 
-            # plt.imshow(self.u_EI.reshape(self.N_y, self.N_x), cmap = cm.hot, origin = 'lower', extent = [0, 1, 0, 1])
+            # plt.imshow(self.u.reshape(self.N_y, self.N_x), cmap = cm.hot, origin = 'lower', extent = [0, 1, 0, 1])
             # plt.pause(self.dt/3)
 
             if nn % 100 == 0:
@@ -403,7 +240,7 @@ class Diffusion_Advection_2D_Constant_h:
 
         ### Write final data to file
         file = open(path + 'Final_data.txt', 'w+')
-        np.savetxt(file, self.u_EI.reshape(self.N_y, self.N_x), fmt = '%.25f')
+        np.savetxt(file, self.u.reshape(self.N_y, self.N_x), fmt = '%.25f')
         file.close()
         
         print('Final time = ', float(t))
@@ -413,15 +250,15 @@ class Diffusion_Advection_2D_Constant_h:
 # Assign values for N, tmax, and eta
 N_x = 100
 N_y = 100
-tmax = 3 * 1e-3
+tmax = 1e-3
 eta_x = 100
-eta_y = 100
+eta_y = 300
 
 def main():
     sim = Diffusion_Advection_2D_Constant_h(N_x, N_y, tmax, eta_x, eta_y)
     # sim.RK4()
     # sim.Crank_Nicolson()
-    # sim.Exponential_Integrator()
+    sim.Exponential_Integrator()
     # sim.SDIRK23()
 
 if __name__ == "__main__":

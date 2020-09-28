@@ -1,11 +1,11 @@
 """
-Created on Thu Aug  6 17:29:51 2020
+Created on Tue Apr 07 23:10:04 2020
 
 @author: Pranab JD
 
 Description: -
-    This code solves the viscous Burgers' equation:
-    du/dt = d^2u/dx^2 + eta * d(u^2)/dx (1D)
+    This code solves the inviscid Burgers' Equation:
+    du/dt = eta * d(u^2)/dx + g(u) (1D)
     using different time integrators.
     Advective term - 3rd order upwind scheme
     Adaptive step size is implemented.
@@ -18,7 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Leja_Interpolation import *
 from Adaptive_Step_Size import *
-from Integrators_2_matrices import *
+from Integrators_1_matrix import *
 from scipy.sparse import csr_matrix
 
 from datetime import datetime
@@ -27,7 +27,7 @@ startTime = datetime.now()
 
 ##############################################################################
 
-class Viscous_Burgers_1D_Adaptive_h:
+class Inviscid_Burgers_1D_Adaptive_h:
 
     def __init__(self, N, tmax, eta, error_tol):
         self.N = int(N)                 # Number of points along X
@@ -36,60 +36,44 @@ class Viscous_Burgers_1D_Adaptive_h:
         self.tmax = tmax                # Maximum time
         self.error_tol = error_tol      # Maximum error permitted
         self.eta = eta                  # Peclet number
-        self.sigma = 0.02          		# Amplitude of Gaussian
-        self.x_0 = 0.9           		# Center of the Gaussian
+        self.epsilon_1 = 0.01           # Amplitude of 1st sine wave
+        self.epsilon_2 = 0.01           # Amplitude of 2nd sine wave
         self.initialize_spatial_domain()
         self.initialize_U()
         self.initialize_parameters()
         self.initialize_matrices()
 
-	### Discretize the spatial domain
+    ### Discretize the spatial domain
     def initialize_spatial_domain(self):
         self.dx = (self.xmax - self.xmin)/(self.N)
         self.X = np.linspace(self.xmin, self.xmax, self.N, endpoint = False)
 
-	### Initial distribution
+    ### Initial distribution
     def initialize_U(self):
-        u0 = 1 + (np.exp(1 - (1/(1 - (2 * self.X - 1)**2)))) + 1./2. * np.exp(-(self.X - self.x_0)**2/(2 * self.sigma**2))
-        self.u = u0.copy()
+        u0 = 2 + self.epsilon_1 * np.sin(2 * np.pi * self.X) + self.epsilon_2 * np.sin(8 * np.pi * self.X + 0.3)
+        self.u = u0.copy()                           
 
     ### Parameters
     def initialize_parameters(self):
         self.adv_cfl = self.dx/abs(self.eta)
-        self.dif_cfl = self.dx**2/2
-        print('Advection CFL: ', self.adv_cfl)
-        print('Diffusion CFL: ', self.dif_cfl)
+        print('CFL time: ', self.adv_cfl)
         print('Tolerance:', self.error_tol)
-        self.dt = 1.25 * min(self.adv_cfl, self.dif_cfl)  # N * CFL condition
-        self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
-        self.R = 1./6. * self.eta/self.dx
-        self.F = 1/self.dx**2                            # Fourier mesh number
+        self.dt = 1.25 * self.adv_cfl                      # N * CFL condition
+        self.nsteps = int(np.ceil(self.tmax/self.dt))     # number of time steps
+        self.R = 1./6. * self.eta/self.dx    
 
     ### Operator matrices
     def initialize_matrices(self):
-        self.A_adv = np.zeros((self.N, self.N))
-        self.A_dif = np.zeros((self.N, self.N))
+        self.A = np.zeros((self.N, self.N))
 
-        ## Factor of 1/2 - conservative Burger's equation
+        ## Factor of 1/2 - conservative Burgers' equation
         for ij in range(self.N):
-            self.A_adv[ij, int(ij + 2) % self.N] = - self.R/2
-            self.A_adv[ij, int(ij + 1) % self.N] = 6 * self.R/2
-            self.A_adv[ij, ij % self.N] = -3 * self.R/2
-            self.A_adv[ij, int(ij - 1) % self.N] = -2 * self.R/2
+            self.A[ij, int(ij + 2) % self.N] = - self.R/2
+            self.A[ij, int(ij + 1) % self.N] = 6 * self.R/2
+            self.A[ij, ij % self.N] = -3 * self.R/2
+            self.A[ij, int(ij - 1) % self.N] = -2 * self.R/2
 
-            self.A_dif[ij, int(ij + 1) % self.N] = self.F
-            self.A_dif[ij, ij % self.N] = -2 * self.F
-            self.A_dif[ij, int(ij - 1) % self.N] = self.F
-
-        self.A_adv = csr_matrix(self.A_adv)
-        self.A_dif = csr_matrix(self.A_dif)
-
-        ## Eigen values (Diffusion)
-        global eigen_min_dif, eigen_max_dif, eigen_imag_dif, c_real_dif, Gamma_real_dif
-        eigen_min_dif = 0
-        eigen_max_dif, eigen_imag_dif = Gershgorin(self.A_dif)      # Max real, imag eigen value
-        c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
-        Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
+        self.A = csr_matrix(self.A)
 
     ##############################################################################
 
@@ -110,7 +94,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 
         ## Eigen values (Advection)
         eigen_min_adv = 0
-        eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
+        eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A, u, 2)   # Max real, imag eigen value
         eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
         eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
 
@@ -123,19 +107,19 @@ class Viscous_Burgers_1D_Adaptive_h:
         ############## --------------------- ##############
     
         ### RHS of PDE (in the form of matrix-vector product)
-        f_u = self.A_adv.dot(u**2) + self.A_dif.dot(u)
+        f_u = self.A.dot(u**2)
         
         ### Change integrator as needed
-        u_sol, its_sol = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
+        u_sol, its_sol = EXPRB42(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)
         
         global Ref_integrator, Method_order
         Ref_integrator = RKF5
         Method_order = 4
 
-        return u_sol, u, 2 + its_sol    
-
+        return u_sol, u, 1 + its_sol     
+    
     ##############################################################################
-
+    
     def Traditional_Controller(self, dt):
         """
         If dt_used = dt_inp, then dt_new > dt_inp.
@@ -143,8 +127,7 @@ class Viscous_Burgers_1D_Adaptive_h:
         """
 
         u_sol, u, num_mv_sol = self.Solution(self.u, dt)
-        u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_trad = Higher_Order_Method_2(self.A_adv, 2, self.A_dif, 1, \
-                                                                                   self.Solution, Method_order, Ref_integrator, u_sol, u, dt, self.error_tol)
+        u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_trad = Higher_Order_Method_1(self.A, 2, self.Solution, Method_order, Ref_integrator, u_sol, u, dt, self.error_tol)
 
         return u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_sol, num_mv_trad
 
@@ -152,34 +135,34 @@ class Viscous_Burgers_1D_Adaptive_h:
 
     def run(self):
         
-        ### Create directory
-        emax = '{:5.1e}'.format(self.error_tol)
-        n_val = '{:3.0f}'.format(self.N)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/C - 100/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB42/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/C - 100/N_" + str(n_val))
+        # ### Create directory
+        # emax = '{:5.1e}'.format(self.error_tol)
+        # n_val = '{:3.0f}'.format(self.N)
+        # path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB42/")
+        # path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val))
+        # 
+        # if os.path.exists(path):
+        #     shutil.rmtree(path)                     # remove previous directory with same name
+        # os.makedirs(path, 0o777)                    # create directory with access rights
+        # 
+        # ### Write simulation parameters to a file
+        # file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
+        # file_param.write('N = %d' % self.N + '\n')
+        # file_param.write('eta = %f' % self.eta + '\n')
+        # file_param.write('CFL time = %.5e' % self.adv_cfl + '\n')
+        # file_param.write('Simulation time = %e' % self.tmax + '\n')
+        # file_param.write('Max. error = %e' % self.error_tol)
+        # file_param.close()
+        # 
+        # ## Create files
+        # file_1 = open(path + "u.txt", 'w+')
+        # file_2 = open(path + "u_ref.txt", 'w+')
+        # file_3 = open(path + "dt.txt", 'w+')
+        # 
+        # ## Write initial value of u to files
+        # file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+        # file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
         
-        if os.path.exists(path):
-            shutil.rmtree(path)                     # remove previous directory with same name
-        os.makedirs(path, 0o777)                    # create directory with access rights
-        
-        ### Write simulation parameters to a file
-        file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
-        file_param.write('N = %d' % self.N + '\n')
-        file_param.write('eta = %f' % self.eta + '\n')
-        file_param.write('CFL time = %.5e' % self.adv_cfl + '\n')
-        file_param.write('Simulation time = %e' % self.tmax + '\n')
-        file_param.write('Max. error = %e' % self.error_tol)
-        file_param.close()
-        
-        ## Create files
-        file_1 = open(path + "u.txt", 'w+')
-        file_2 = open(path + "u_ref.txt", 'w+')
-        file_3 = open(path + "dt.txt", 'w+')
-        
-        ## Write initial value of u to files
-        file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
-        file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
-
         time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
         count_mv = 0                                # Counter for matrix-vector products
@@ -190,12 +173,12 @@ class Viscous_Burgers_1D_Adaptive_h:
         cost_iter = 0
         trad_iter = 0
         dt_trad = self.dt
-
+        
         ############## --------------------- ##############
-
-        ### Time loop ###
+        
+        ## Time loop
         while (time < self.tmax):
-
+            
             if counter < 2:
 
                 ### Traditional Controller
@@ -204,7 +187,7 @@ class Viscous_Burgers_1D_Adaptive_h:
                 cost_trad = num_mv_sol + num_mv_trad
                 cost_cont = 0
                 trad_iter = trad_iter + 1
-
+            
             elif counter >= 2:
                 
                 ############## --------------------- ##############
@@ -232,7 +215,7 @@ class Viscous_Burgers_1D_Adaptive_h:
                 # u_sol, u, num_mv_sol = self.Solution(self.u, dt)
                 # 
                 # ### Reference Solution and error
-                # u_ref, its_ref_1 = Ref_integrator(self.A_adv, 2, self.A_dif, 1, self.u, dt)
+                # u_ref, its_ref_1 = Ref_integrator(self.A, 2, self.u, dt)
                 # error = np.mean(abs(u_sol - u_ref))
                 # 
                 # ############## --------------------- ##############
@@ -240,8 +223,8 @@ class Viscous_Burgers_1D_Adaptive_h:
                 # if error > self.error_tol or dt == dt_trad:
                 #     
                 #     ### Traditional controller
-                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_2(self.A_adv, 2, self.A_dif, 1, \
-                #                                                                    self.Solution, Method_order, Ref_integrator, u_sol, u, dt, self.error_tol)
+                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_1(self.A, 2, self.Solution, Method_order, \
+                #                                                                                 Ref_integrator, u_sol, u, dt, self.error_tol)
                 #     
                 #     ## its_ref_1 added in num_mv_trad
                 #     cost_trad = num_mv_sol + num_mv_trad
@@ -289,22 +272,22 @@ class Viscous_Burgers_1D_Adaptive_h:
             self.dt = dt_used
             time = time + self.dt
             
-            ### Write data to files
-            file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
-            file_2.write(' '.join(map(str, u_ref)) % u_ref + '\n')
-            file_3.write('%.15f' % self.dt + '\n')
+            # ### Write data to files
+            # file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+            # file_2.write(' '.join(map(str, u_ref)) % u_ref + '\n')
+            # file_3.write('%.15f' % self.dt + '\n')
             
-            ############# --------------------- ##############
+            ############## --------------------- ##############
 
-            # ## Test plots
+            ### Test plots
             # plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            # plt.plot(self.X, u, 'b.', label = 'Data')
+            # plt.plot(self.X, self.u, 'b.', label = 'Data')
             # plt.legend()
             # plt.pause(self.dt)
             # plt.clf()
-
+            
             ############## --------------------- ##############
-
+    
         print('Cost controller used in ', cost_iter, 'time steps')
         print('Traditional controller used in ', trad_iter, 'time steps')
         print('Number of time steps = ', counter)
@@ -312,42 +295,42 @@ class Viscous_Burgers_1D_Adaptive_h:
 
         ############## --------------------- ##############
         
-        ## Write simulation results to file
-        file_res = open(path + 'Results.txt', 'w+')
-        file_res.write('Number of time steps = %d' % counter + '\n')
-        file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
-        file_res.write('Cost controller used in %d' % cost_iter + ' time steps.')
-        file_res.close()
+        # ## Write simulation results to file
+        # file_res = open(path + 'Results.txt', 'w+')
+        # file_res.write('Number of time steps = %d' % counter + '\n')
+        # file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
+        # file_res.write('Cost controller used in %d' % cost_iter + ' time steps.')
+        # file_res.close()
+        # 
+        # ## Close files
+        # file_1.close()
+        # file_2.close()
+        # file_3.close()
         
-        ## Close files
-        file_1.close()
-        file_2.close()
-        file_3.close()
-
-
+        
 ##############################################################################
 
-error_list_1 = [1e-3, 1e-4, 1e-5]
-error_list_2 = [1e-6, 1e-7]
-error_list_3 = [5e-4, 5e-5, 5e-6]
-error_list_4 = [5e-7, 5e-8]
-error_list_5 = [1e-6]
+# error_list_1 = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+# error_list_2 = [1e-6, 1e-7]
+# error_list_3 = [5e-4, 5e-5, 5e-6, 5e-7, 5e-8]
+# error_list_4 = [5e-7, 5e-8]
+error_list_5 = [1e-7]
 
 ## Assign values for N, tmax, tol, and eta
-for ii in error_list_4:
+for ii in error_list_5:
 
     loopTime = datetime.now()
 
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
-    N = 700
-    t_max = 1e-2
-    eta = 100
+    N = 300
+    t_max = 5e-4
+    eta = 250
     error_tol = ii
 
     def main():
-        sim = Viscous_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)
+        sim = Inviscid_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)
         sim.run()
 
     if __name__ == "__main__":
