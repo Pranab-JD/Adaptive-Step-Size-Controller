@@ -456,7 +456,6 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
     else:
         print("Error! Check number of matrices!!")
               
-
     ## a_0 term
     poly = nonlin_matrix_vector.copy() + 0 * 1j
     poly = coeffs[0] * poly
@@ -465,7 +464,7 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
     y = nonlin_matrix_vector.copy() + 0 * 1j
     max_Leja_pts = 50
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-4                                            ## for EXPRB42
+    poly_tol = 1e-5                                             ## for EXPRB42
     epsilon = 1e-7
     
     scale_fact = 1/Gamma_imag                                   # Re-scaling factor
@@ -495,14 +494,19 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
         poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
 
         ## If new number (next order) to be added < tol, ignore it
-        if  ii > 1 and (poly_vals[ii] - poly_vals[ii - 1] > 0 or poly_vals[ii] < poly_tol):
-            # print(poly_vals[0:ii])
+        if  poly_vals[ii] < poly_tol:
+            # print(poly_vals[1:ii + 1])
             # print('No. of Leja points used (imag phi) = ', ii)
-            # print('-------------------------------------------------------------------------')
+            # print('----------Tolerance reached---------------')
             poly = poly + coeffs[ii] * y
             break
-        elif ii == 1:
-            poly = poly + coeffs[ii] * y
+        
+        elif ii > 4 and poly_vals[ii] - poly_vals[ii - 1] > 0:
+            # print(poly_vals[1:ii])
+            # print('No. of Leja points used (imag phi) = ', ii)
+            # print('------------Starts diverging----------------')
+            break
+            
         else:
             poly = poly + coeffs[ii] * y
 

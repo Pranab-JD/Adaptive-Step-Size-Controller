@@ -77,7 +77,7 @@ def RKF5(A_adv, m_adv, u, dt):
 
 ### ETD ###
 
-def ETD(A_adv, m_adv, u, dt, Leja_X, c, Gamma):
+def ETD(A_adv, m_adv, u, dt, c, Gamma):
     
     epsilon = 1e-12
     
@@ -128,7 +128,7 @@ def ETD(A_adv, m_adv, u, dt, Leja_X, c, Gamma):
 
 ### ETDRK2 ###
 
-def ETDRK2(A_adv, u, dt, Leja_X, c, Gamma):
+def ETDRK2(A_adv, u, dt, c, Gamma):
 
     epsilon = 1e-12
     
@@ -243,11 +243,6 @@ def EXPRB42(A_adv, m_adv, u, dt, c, Gamma):
     u_1, its_1 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
     u_nl_3, its_3 = imag_Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv)
     
-    # print('f(u) = ', np.linalg.norm(f_u))
-    # print('N(a) - N(u) = ', np.linalg.norm((Nonlin_a - Nonlin_u)))
-    # print('u = ', np.linalg.norm(u))
-    # print('a = ', np.linalg.norm(a_n))
-    
     u_exprb42 = u + (u_1 * dt) + (u_nl_3 * 32*dt/9)
     
     return u_exprb42, 4 + its_a + its_1 + its_3
@@ -256,7 +251,7 @@ def EXPRB42(A_adv, m_adv, u, dt, c, Gamma):
 
 ### EXPRB43 ###
 
-def EXPRB43(A_adv, m_adv, u, dt, Leja_X, c, Gamma):
+def EXPRB43(A_adv, m_adv, u, dt, c, Gamma):
     
     """
     Parameters
@@ -289,8 +284,8 @@ def EXPRB43(A_adv, m_adv, u, dt, Leja_X, c, Gamma):
     
     ############## --------------------- ##############
     
-    a_n_f, its_a = imag_Leja_phi(u, f_u, dt/2, Leja_X, c, Gamma, phi_1, A_adv, m_adv)
-    b_n_f, its_b = imag_Leja_phi(u, f_u, dt, Leja_X, c, Gamma, phi_1, A_adv, m_adv)
+    a_n_f, its_a = imag_Leja_phi(u, f_u, dt/2, c, Gamma, phi_1, A_adv, m_adv)
+    b_n_f, its_b = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
     
     a_n = u + a_n_f * dt/2
     b_n = u + b_n_f * dt
@@ -313,13 +308,13 @@ def EXPRB43(A_adv, m_adv, u, dt, Leja_X, c, Gamma):
     
     ############# --------------------- ##############
     
-    u_1, its_1 = imag_Leja_phi(u, f_u, dt, Leja_X, c, Gamma, phi_1, A_adv, m_adv)  
-    u_nl_3, its_3 = imag_Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, Leja_X, c, Gamma, phi_3, A_adv, m_adv)
-    u_nl_4, its_4 = imag_Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, Leja_X, c, Gamma, phi_4, A_adv, m_adv)
+    u_1, its_1 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)  
+    u_nl_3, its_3 = imag_Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_adv, m_adv)
+    u_nl_4, its_4 = imag_Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_adv, m_adv)
     
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
     
-    return u_exprb3, u_exprb4, 6 + its_a + its_b + its_1 + its_3, 6 + its_a + its_b + its_1 + its_3 + its_4
+    return u_exprb3, 6 + its_a + its_b + its_1 + its_3, u_exprb4, 6 + its_a + its_b + its_1 + its_3 + its_4
 
 ##############################################################################
