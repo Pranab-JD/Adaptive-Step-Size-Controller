@@ -188,8 +188,8 @@ def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
 
         return alpha, beta, lambd, delta
 
-    alpha, beta, lambd, delta = Non_penalized()
-    # alpha, beta, lambd, delta = Penalized()
+    # alpha, beta, lambd, delta = Non_penalized()
+    alpha, beta, lambd, delta = Penalized()
 
     Del = (np.log(cost_n) - np.log(cost_n_1))/(np.log(dt_n) - np.log(dt_n_1))
 

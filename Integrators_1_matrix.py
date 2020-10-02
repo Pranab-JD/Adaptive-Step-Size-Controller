@@ -303,18 +303,18 @@ def EXPRB43(A_adv, m_adv, u, dt, c, Gamma):
     ### J(u) * b
     Linear_b = (A_adv.dot((u + (epsilon * b_n))**m_adv) - f_u)/epsilon
     
-    ### F(b) = f(b) - (J(u) * b)
+    ### F(b) = f(b) - (J(u) * b)s
     Nonlin_b = A_adv.dot(b_n**m_adv) - Linear_b
     
     ############# --------------------- ##############
     
-    u_1, its_1 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)  
+    u_1 = b_n_f  
     u_nl_3, its_3 = imag_Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_adv, m_adv)
     u_nl_4, its_4 = imag_Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_adv, m_adv)
     
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
     
-    return u_exprb3, 6 + its_a + its_b + its_1 + its_3, u_exprb4, 6 + its_a + its_b + its_1 + its_3 + its_4
+    return u_exprb3, 6 + its_a + its_b + its_3, u_exprb4, 6 + its_a + its_b + its_3 + its_4
 
 ##############################################################################

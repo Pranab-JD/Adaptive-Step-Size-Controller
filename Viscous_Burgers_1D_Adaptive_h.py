@@ -126,11 +126,11 @@ class Viscous_Burgers_1D_Adaptive_h:
         f_u = self.A_adv.dot(u**2) + self.A_dif.dot(u)
         
         ### Change integrator as needed
-        u_sol, its_sol = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
+        u_sol, its_sol = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
         
         global Ref_integrator, Method_order
-        Ref_integrator = RKF5
-        Method_order = 4
+        Ref_integrator = RK4
+        Method_order = 3
 
         return u_sol, u, 2 + its_sol    
 
@@ -155,8 +155,8 @@ class Viscous_Burgers_1D_Adaptive_h:
         ### Create directory
         emax = '{:5.1e}'.format(self.error_tol)
         n_val = '{:3.0f}'.format(self.N)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/C - 100/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB42/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/C - 100/N_" + str(n_val))
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D - 100/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB43/3rd order/")
+        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D - 100/N_" + str(n_val))
         
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -327,14 +327,11 @@ class Viscous_Burgers_1D_Adaptive_h:
 
 ##############################################################################
 
-error_list_1 = [1e-3, 1e-4, 1e-5]
-error_list_2 = [1e-6, 1e-7]
-error_list_3 = [5e-4, 5e-5, 5e-6]
-error_list_4 = [5e-7, 5e-8]
-error_list_5 = [1e-6]
+error_list_1 = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 5e-4, 5e-5, 5e-6, 5e-7, 5e-8]
+error_list_2 = [1e-6]
 
 ## Assign values for N, tmax, tol, and eta
-for ii in error_list_4:
+for ii in error_list_1:
 
     loopTime = datetime.now()
 

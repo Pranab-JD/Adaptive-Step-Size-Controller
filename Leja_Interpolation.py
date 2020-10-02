@@ -380,7 +380,6 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
     u                       : Vector u
     nonlin_matrix_vector    : function to be multiplied to phi function
     dt                      : self.dt
-    Leja_X                  : Leja points
     c_imag                  : Shifting factor
     Gamma_imag              : Scaling factor
     phi_func                : phi function
@@ -389,7 +388,7 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
     Returns
     ----------
     np.real(u_imag)         : Polynomial interpolation of
-                              nonlinear part using the phi_1
+                              nonlinear part using the phi
                               function at imaginary Leja points
     ii * len(A)             : No. of matrix-vector products
 
@@ -464,7 +463,7 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
     y = nonlin_matrix_vector.copy() + 0 * 1j
     max_Leja_pts = 50
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-5                                             ## for EXPRB42
+    poly_tol = 1e-5 
     epsilon = 1e-7
     
     scale_fact = 1/Gamma_imag                                   # Re-scaling factor
@@ -475,11 +474,6 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
         
         ## function: function to be multiplied to the phi function applied to Jacobian
         function = y.copy()
-        
-        # if np.linalg.norm(function)/10 > 1.75 or np.linalg.norm(function)/10 < 0.02:
-        #     epsilon = 1e-7/np.linalg.norm(function)
-        # else:
-        #     epsilon = 1e-7
 
         if len(A) == 2:
             Jacobian_function = (A_adv.dot((u + (epsilon * function))**m_adv) - A_adv.dot(u**m_adv))/epsilon

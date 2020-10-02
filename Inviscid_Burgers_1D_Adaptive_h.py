@@ -110,11 +110,11 @@ class Inviscid_Burgers_1D_Adaptive_h:
         f_u = self.A.dot(u**2)
         
         ### Change integrator as needed
-        u_sol, its_sol = EXPRB42(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)
+        u_sol, its_sol = EXPRB43(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
         
         global Ref_integrator, Method_order
-        Ref_integrator = RKF5
-        Method_order = 4
+        Ref_integrator = RK4
+        Method_order = 3
 
         return u_sol, u, 1 + its_sol     
     
@@ -138,8 +138,8 @@ class Inviscid_Burgers_1D_Adaptive_h:
         ### Create directory
         emax = '{:5.1e}'.format(self.error_tol)
         n_val = '{:3.0f}'.format(self.N)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB42/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val))
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/D - 100/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB43/3rd order/")
+        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/D - 100/N_" + str(n_val))
         
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -225,60 +225,60 @@ class Inviscid_Burgers_1D_Adaptive_h:
             
             else:
                 
-                # ### Traditional Controller
-                # u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_sol, num_mv_trad = self.Traditional_Controller(dt_trad)
+                ### Traditional Controller
+                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_sol, num_mv_trad = self.Traditional_Controller(dt_trad)
+                
+                cost_trad = num_mv_sol + num_mv_trad
+                cost_cont = 0
+                trad_iter = trad_iter + 1
+                
+                ############## --------------------- ##############
+                
+                # ### Cost controller
+                # mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
+                # dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
                 # 
-                # cost_trad = num_mv_sol + num_mv_trad
-                # cost_cont = 0
-                # trad_iter = trad_iter + 1
-                
-                ############## --------------------- ##############
-                
-                ### Cost controller
-                mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
-                dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
-                
-                dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
-                
-                dt = min(dt_controller, dt_trad)
-                
-                ############## --------------------- ##############
-                
-                ### Solve with dt
-                u_sol, u, num_mv_sol = self.Solution(self.u, dt)
-                
-                ### Reference Solution and error
-                u_ref, its_ref_1 = Ref_integrator(self.A, 2, self.u, dt)
-                error = np.mean(abs(u_sol - u_ref))
-                
-                ############## --------------------- ##############
-                
-                if error > self.error_tol or dt == dt_trad:
-                    
-                    ### Traditional controller
-                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_1(self.A, 2, self.Solution, Method_order, \
-                                                                                                Ref_integrator, u_sol, u, dt, self.error_tol)
-                    
-                    ## its_ref_1 added in num_mv_trad
-                    cost_trad = num_mv_sol + num_mv_trad
-                    cost_cont = 0
-                    trad_iter = trad_iter + 1
-                        
-                else:
-                
-                    ### Cost controller
-                    cost_cont = num_mv_sol + its_ref_1
-                    cost_trad = 0
-                    cost_iter = cost_iter + 1
-                    
-                    ## dt used in this time step
-                    dt_used = dt
-                    
-                    ############## --------------------- ##############
-                                  
-                    ### Estimate of dt for next time step using traditional controller ###
-                    new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
-                    dt_trad = 0.875 * new_dt          # Safety factor
+                # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
+                # 
+                # dt = min(dt_controller, dt_trad)
+                # 
+                # ############## --------------------- ##############
+                # 
+                # ### Solve with dt
+                # u_sol, u, num_mv_sol = self.Solution(self.u, dt)
+                # 
+                # ### Reference Solution and error
+                # u_ref, its_ref_1 = Ref_integrator(self.A, 2, self.u, dt)
+                # error = np.mean(abs(u_sol - u_ref))
+                # 
+                # ############## --------------------- ##############
+                # 
+                # if error > self.error_tol or dt == dt_trad:
+                #     
+                #     ### Traditional controller
+                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_1(self.A, 2, self.Solution, Method_order, \
+                #                                                                                 Ref_integrator, u_sol, u, dt, self.error_tol)
+                #     
+                #     ## its_ref_1 added in num_mv_trad
+                #     cost_trad = num_mv_sol + num_mv_trad
+                #     cost_cont = 0
+                #     trad_iter = trad_iter + 1
+                #         
+                # else:
+                # 
+                #     ### Cost controller
+                #     cost_cont = num_mv_sol + its_ref_1
+                #     cost_trad = 0
+                #     cost_iter = cost_iter + 1
+                #     
+                #     ## dt used in this time step
+                #     dt_used = dt
+                #     
+                #     ############## --------------------- ##############
+                #                   
+                #     ### Estimate of dt for next time step using traditional controller ###
+                #     new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
+                #     dt_trad = 0.875 * new_dt          # Safety factor
                  
             ############## --------------------- ##############
 
@@ -332,11 +332,8 @@ class Inviscid_Burgers_1D_Adaptive_h:
         
 ##############################################################################
 
-error_list_1 = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
-# error_list_2 = [1e-6, 1e-7]
-error_list_3 = [5e-4, 5e-5, 5e-6, 5e-7, 5e-8]
-# error_list_4 = [5e-7, 5e-8]
-# error_list_5 = [1e-4]
+error_list_1 = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 5e-4, 5e-5, 5e-6, 5e-7, 5e-8]
+# error_list_3 = [1e-4]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_1:
@@ -346,9 +343,9 @@ for ii in error_list_1:
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
-    N = 500
+    N = 700
     t_max = 5e-2
-    eta = 50
+    eta = 100
     error_tol = ii
 
     def main():
