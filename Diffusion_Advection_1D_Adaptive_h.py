@@ -16,17 +16,15 @@ Description: -
 import os
 import shutil
 import numpy as np
-from decimal import *
 import matplotlib.pyplot as plt
 from Leja_Interpolation import *
-from Adaptive_Step_Size_2 import *
+from Adaptive_Step_Size import *
+from Integrators_1_matrix import *
 from scipy.sparse import csr_matrix
-
 
 from datetime import datetime
 
 startTime = datetime.now()
-getcontext().prec = 8                   # Precision for decimal numbers
 
 ##############################################################################
 
@@ -42,7 +40,6 @@ class Diffusion_Advection_1D_Adaptive_h:
         self.sigma_init = 1.4 * 1e-3    # Initial amplitude of Gaussian
         self.epsilon_1 = 0.01           # Amplitude of 1st sine wave
         self.epsilon_2 = 0.01           # Amplitude of 2nd sine wave
-        self.gamma = (3 + 3**0.5)/6     # gamma for SDIRK methods
         self.initial_values_CN = False
         self.initialize_spatial_domain()
         self.initialize_U()
@@ -61,22 +58,23 @@ class Diffusion_Advection_1D_Adaptive_h:
 
     ### Parameters
     def initialize_parameters(self):
-        self.adv_cfl = self.dx/abs(self.eta)                # Advection CFL condition
-        self.diff_cfl = self.dx**2/2                        # Diffusion CFL condition
-        self.dt = 1 * min(self.adv_cfl, self.diff_cfl)                        
-        self.nsteps = int(self.tmax/self.dt)           	    # number of time steps
-        self.R = self.eta/self.dx              	            # R = eta * dt/dx
+        self.adv_cfl = self.dx/abs(self.eta)                
+        self.diff_cfl = self.dx**2/2                        
+        self.dt = 0.5 * min(self.adv_cfl, self.diff_cfl)   # N * CFL condition                     
+        print('CFL time: ', self.adv_cfl)
+        print('Tolerance:', self.error_tol)
+        self.R = 1./6. * self.eta/self.dx      	            # R = eta * dt/dx
         self.F = 1/self.dx**2							    # Fourier mesh number
 
     ### Matrices
     def initialize_matrices(self):
-        self.A = np.zeros((self.N, self.N))                                      # LHS matrix
-        self.b = np.zeros(self.N)                                                # RHS array
+        self.A = np.zeros((self.N, self.N))
         
-        for jj in range(self.N):
-            self.A[jj, int(jj + 1) % int(self.N)] = self.F + self.R             # ii + 1
-            self.A[jj, jj % self.N] = -2*self.F - self.R                        # ii
-            self.A[jj, int(jj - 1) % int(self.N)] = self.F                      # ii - 1
+        for ij in range(self.N):
+            self.A[ij, int(ij + 2) % self.N] = -self.R/2
+            self.A[ij, int(ij + 1) % self.N] = 6*self.R/2 + self.F
+            self.A[ij, ij % self.N] = -3*self.R/2 - 2*self.F
+            self.A[ij, int(ij - 1) % self.N] = -2*self.R/2 + self.F
             
         self.A = csr_matrix(self.A)
         
@@ -92,24 +90,24 @@ class Diffusion_Advection_1D_Adaptive_h:
     ##############################################################################
     
     def Solution(self, u, dt):
-    
-        u_sol, its_sol = imag_Leja_exp(self.A, self.u, dt, c_imag, Gamma_imag)
-
-        return u_sol, self.u, its_sol
-    
-    ''' order of this method (p)?'''
-    
-    ##############################################################################
-
-    def Traditional_Controller(self, dt):
         """
-        If dt_used = dt_inp, then dt_new > dt_inp.
-        If dt_used = dt_new, then dt_new < dt_inp.
+        Parameters
+        ----------
+        u       : 1D vector u (input)
+        dt      : dt
+    
+        Returns
+        -------
+        u_sol       : 1D vector u (output) after time dt
+        u           : 1D vector u (input)
+        its_sol     : Number of matrix-vector products
+    
         """
-        u_sol, u, num_mv_sol = self.Solution(self.u, dt)
-        u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_ric = Richardson_Extrapolation(self.Solution, u_sol, u, dt, self.error_tol)
+    
+        # u_sol, its_sol = real_Leja_exp(self.A, u, dt, c_real, Gamma_real)
+        u_sol, its_sol = imag_Leja_exp(self.A, u, dt, c_imag, Gamma_imag)
 
-        return u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_sol, num_mv_ric
+        return u_sol, u, its_sol
     
     ##############################################################################
     
@@ -118,20 +116,8 @@ class Diffusion_Advection_1D_Adaptive_h:
         time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
         count_mv = 0                                # Counter for matrix-vector products
-        mat_vec_prod = []
         
-        dt_temp = []
-        DT_cost = []
-        DT_trad_temp = {}
-
-        Time = []
-
-        cost_cost = []
-        cost_Trad = []
-
-        cost_iter = 0
-        trad_iter = 0
-        dt_trad = self.dt
+        mat_vec_prod = []  
 
         ############## --------------------- ##############
 
@@ -140,8 +126,8 @@ class Diffusion_Advection_1D_Adaptive_h:
 
             if counter < 2:
 
-                ### Traditional Controller
-                u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_sol, num_mv_ric = self.Traditional_Controller(dt_trad)
+                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_1(self.A, 1, self.Solution, Method_order, \
+                                                                                            Ref_integrator, u_sol, u, dt, self.error_tol)
                 
                 cost_trad = num_mv_sol + num_mv_ric
                 cost_cont = 0
@@ -157,79 +143,63 @@ class Diffusion_Advection_1D_Adaptive_h:
                 
                 ############## --------------------- ##############
                 
-                ### Traditional Controller
-                u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_sol, num_mv_ric = self.Traditional_Controller(dt_trad)
+                ### Cost controller
+                mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
+                dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
                 
-                cost_trad = num_mv_sol + num_mv_ric
-                cost_cont = 0
-                trad_iter = trad_iter + 1
-                
-                print('# of matrix vector products using trad controller', num_mv_sol + num_mv_ric)
-                
-                DT_cost.append(dt_used)
-                DT_trad_temp[counter] = dt_used
-                DT_trad_temp[counter + 1] = dt_trad
-                
+                dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
+                DT_cost.append(dt_controller)
                 
                 ############## --------------------- ##############
                 
-                # ### Cost controller
-                # mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
-                # dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
-                # 
-                # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
-                # DT_cost.append(dt_controller)
-                # 
-                # ############## --------------------- ##############
-                # 
-                # dt = min(dt_controller, dt_trad)
-                # # dt = dt_controller
-                # 
-                # ############## --------------------- ##############
-                # 
-                # ### Solve with dt
-                # u_sol, u, num_mv_sol = self.Solution(self.u, dt)
-                # 
-                # ### Reference Solution and error
-                # u_ref, its_ref_1 = RKF5(self.A_adv, 2, self.A_dif, 1, self.u, dt)
-                # error = np.mean(abs(u_sol - u_ref))
-                # 
-                # ############## --------------------- ##############
-                # 
-                # if error > self.error_tol or dt == dt_trad:
-                # 
-                #     print('Error > Tolerance. Reducing dt')
-                #     
-                #     ### Traditional controller
-                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_2(4, self.A_adv, self.A_dif, self.Solution, RKF5, u_sol, u, dt, self.error_tol)
-                #     
-                #     trad_iter = trad_iter + 1
-                #     
-                #     DT_trad_temp[counter] = dt_used
-                #     DT_trad_temp[counter + 1] = dt_trad         
-                #     
-                #     cost_trad = num_mv_sol + num_mv_trad
-                #     cost_cont = 0
-                #     
-                #     print('# of matrix vector products using trad controller', cost_trad)
-                #         
-                # else:
-                # 
-                #     ### Cost controller
-                #     cost_cont = num_mv_sol + its_ref_1
-                #     cost_trad = 0
-                #     cost_iter = cost_iter + 1
-                #     
-                #     ############## --------------------- ##############
-                #                   
-                #     ### Estimate of dt for next time step using traditional controller ###
-                #     new_dt = dt * (self.error_tol/error)**(1/(4 + 1))
-                #     dt_trad = 0.875 * new_dt          # Safety factor
-                #     
-                #     dt_used = dt
-                #     DT_trad_temp[counter + 1] = dt_trad
-                #     
-                #     print('# of matrix vector products using cost controller', cost_cont)
+                dt = min(dt_controller, dt_trad)
+                # dt = dt_controller
+                
+                ############## --------------------- ##############
+                
+                ### Solve with dt
+                u_sol, u, num_mv_sol = self.Solution(self.u, dt)
+                
+                ### Reference Solution and error
+                u_ref, its_ref_1 = RKF5(self.A_adv, 2, self.A_dif, 1, self.u, dt)
+                error = np.mean(abs(u_sol - u_ref))
+                
+                ############## --------------------- ##############
+                
+                if error > self.error_tol or dt == dt_trad:
+                
+                    print('Error > Tolerance. Reducing dt')
+                    
+                    ### Traditional controller
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_2(4, self.A_adv, self.A_dif, self.Solution, RKF5, u_sol, u, dt, self.error_tol)
+                    
+                    trad_iter = trad_iter + 1
+                    
+                    DT_trad_temp[counter] = dt_used
+                    DT_trad_temp[counter + 1] = dt_trad         
+                    
+                    cost_trad = num_mv_sol + num_mv_trad
+                    cost_cont = 0
+                    
+                    print('# of matrix vector products using trad controller', cost_trad)
+                        
+                else:
+                
+                    ### Cost controller
+                    cost_cont = num_mv_sol + its_ref_1
+                    cost_trad = 0
+                    cost_iter = cost_iter + 1
+                    
+                    ############## --------------------- ##############
+                                  
+                    ### Estimate of dt for next time step using traditional controller ###
+                    new_dt = dt * (self.error_tol/error)**(1/(4 + 1))
+                    dt_trad = 0.875 * new_dt          # Safety factor
+                    
+                    dt_used = dt
+                    DT_trad_temp[counter + 1] = dt_trad
+                    
+                    print('# of matrix vector products using cost controller', cost_cont)
 
             ############## --------------------- ##############     
                                         
