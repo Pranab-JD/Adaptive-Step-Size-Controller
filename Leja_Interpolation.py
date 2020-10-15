@@ -50,19 +50,10 @@ def Divided_Difference(X, func):
 
     for ii in range(1, int(len(X)/10)):
         for jj in range(ii):
-            div_diff[ii] = (div_diff[jj] - div_diff[ii])/(X[jj] - X[ii])
+            
+            div_diff[ii] = (div_diff[ii] - div_diff[jj])/(X[ii] - X[jj])
 
     return div_diff
-
-def divdiff(x, func):
-    d = [func(x[0])]
-    for m in range(1,int(len(x)/10)):
-        d.append(func(x[m]))
-        for i in range(m):
-            d[m] = (d[m]-d[i])/(x[m]-x[i])
-
-    return d
-
 
 def Gershgorin(A):
     """
@@ -394,52 +385,45 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
 
     """
     
-    
     def func(xx):
     
         np.seterr(divide = 'ignore', invalid = 'ignore')
     
         zz = (1j * dt * (c_imag + Gamma_imag*xx))
-        
         var = phi_func(zz)
-        cnt = 0
-        if phi_func == phi_1:
 
+        if phi_func == phi_1:
+        
             for ii in range(len(zz)):
-                if abs(np.imag(zz[ii])) <= 1e-7:
-                    print('Taylor exp')
+                if abs(zz[ii]) <= 1e-6:
+                    # print('Taylor exp phi 1')
                     var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
-                    # print(var)
-                    cnt = cnt + 1
-    
+        
         elif phi_func == phi_2:
-    
-            for ii in range(len(Leja_X)):
-                if zz[ii] <= 1e-7:
-                    var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
-    
-    
-        elif phi_func == phi_3:
-    
+        
             for ii in range(len(zz)):
-                if abs(np.imag(zz[ii])) <= 1e-7:
-                    print('Taylor exp')
+                if zz[ii] <= 1e-6:
+                    # print('Taylor exp phi 2')
+                    var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
+        
+        
+        elif phi_func == phi_3:
+        
+            for ii in range(len(zz)):
+                if abs(zz[ii]) <= 1e-5:
+                    # print('Taylor exp phi 3', zz[ii])
                     var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
-                    # print(var)
-                    cnt = cnt + 1
                     
         elif phi_func == phi_4:
-    
-            for ii in range(len(Leja_X)):
-                if zz[ii] <= 1e-7:
+        
+            for ii in range(len(zz)):
+                if abs(zz[ii]) <= 1e-4:
+                    # print('Taylor exp phi 4')
                     var[ii] = 1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + zz[ii] * (1./5040. + 1./40320.*zz[ii])))
-    
+        
         else:
             print('Error: Phi function not defined!!')
-        
-        if cnt>0:
-            print(cnt)
-    
+
         return var
 
     ## Polynomial coefficients
@@ -463,8 +447,9 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
     y = nonlin_matrix_vector.copy() + 0 * 1j
     max_Leja_pts = 50
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-5 
+    poly_tol = 1e-4 * np.min(abs(nonlin_matrix_vector))
     epsilon = 1e-7
+    y_val = np.zeros((max_Leja_pts, len(u)), dtype = complex)
     
     scale_fact = 1/Gamma_imag                                   # Re-scaling factor
 
@@ -489,25 +474,38 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
 
         ## If new number (next order) to be added < tol, ignore it
         if  poly_vals[ii] < poly_tol:
-            # print(poly_vals[1:ii + 1])
             # print('No. of Leja points used (imag phi) = ', ii)
             # print('----------Tolerance reached---------------')
-            poly = poly + coeffs[ii] * y
+            y_val[ii, :] = coeffs[ii] * y
             break
         
-        elif ii > 4 and poly_vals[ii] - poly_vals[ii - 1] > 0:
-            # print(poly_vals[1:ii])
+        elif ii > 4 and poly_vals[ii] > poly_vals[ii - 1]:
             # print('No. of Leja points used (imag phi) = ', ii)
-            # print('------------Starts diverging----------------')
+            # print('----------Diverging---------------')
             break
             
         else:
-            poly = poly + coeffs[ii] * y
-
+            y_val[ii, :] = coeffs[ii] * y
+        
+        
         if ii >= max_Leja_pts - 1:
             print('ERROR: max number of Leja iterations reached (imag phi)')
             print('-------------------------------------------------------------------------')
 
+    ### Choose polynomial terms up to the smallest term, ignore the rest
+    if poly_vals[1] == 0 and poly_vals[2] == 0 and poly_vals[3] == 0:        # poly_vals[1] = 0, no more terms needed
+        min_poly_val_x = 0   
+    
+    elif np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
+        min_poly_val_x = np.argmin(poly_vals[np.nonzero(poly_vals)])
+        
+    else:
+        min_poly_val_x = np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1     # Starts to diverge
+            
+    
+    for jj in range(1, min_poly_val_x + 1):
+        poly = poly + y_val[jj, :]    
+            
     ## Solution
     u_imag = poly.copy()
 

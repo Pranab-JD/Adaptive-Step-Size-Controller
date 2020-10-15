@@ -62,7 +62,7 @@ class Viscous_Burgers_1D_Constant_h:
         self.dif_cfl = self.dx**2/2
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
-        self.dt = 0.9 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
+        self.dt = 0.1 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
         self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
         self.R = 1./6. * self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
@@ -160,9 +160,6 @@ class Viscous_Burgers_1D_Constant_h:
     ##############################################################################    
 
     def Solution(self, u, dt):
-        
-        ## Leja points
-        Leja_X = Leja_Points()
     
         ############## --------------------- ##############
         
@@ -185,7 +182,7 @@ class Viscous_Burgers_1D_Constant_h:
         
         u_temp, its_sol = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
         
-        print('Number of matrix vector products in each iteration =', its_sol)
+        # print('Number of matrix vector products in each iteration =', its_sol)
         
         ############## --------------------- ##############
         
@@ -213,8 +210,6 @@ class Viscous_Burgers_1D_Constant_h:
         # file_param.write('Advection CFL = %.5e' % self.adv_cfl + '\n')
         # file_param.write('Diffusion CFL = %.5e' % self.dif_cfl + '\n')
         # file_param.write('Simulation time = %e' % self.tmax + '\n')
-        # file_param.write('Linear Term: Imag Leja' + '\n')
-        # file_param.write('Nonlinear Term: Imag Leja')
         # file_param.close()
         # 
         # ## Create files
@@ -242,13 +237,12 @@ class Viscous_Burgers_1D_Constant_h:
                  
             u, num_mv = self.Solution(self.u, self.dt)
             
-
             t = Decimal(t) + Decimal(self.dt)
             self.u = u.copy()
             
             count_mv = count_mv + num_mv
             
-            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            # print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
             
             # ### Write data to files
             # file.write(' '.join(map(str, u)) % u + '\n')
@@ -256,9 +250,9 @@ class Viscous_Burgers_1D_Constant_h:
             ############## --------------------- ##############
 
             ### Test plots
-            # plt.plot(self.X, self.u, 'b.')
-            # plt.pause(self.dt/2)
-            # plt.clf()
+            plt.plot(self.X, self.u, 'b.')
+            plt.pause(self.dt/2)
+            plt.clf()
             
             ############## --------------------- ##############
         
@@ -279,7 +273,7 @@ class Viscous_Burgers_1D_Constant_h:
 ### Assign values for N, tmax, and eta
 N = 500
 t_max = 5e-4
-eta = 100
+eta = 1
 
 def main():
     sim = Viscous_Burgers_1D_Constant_h(N, t_max, eta)

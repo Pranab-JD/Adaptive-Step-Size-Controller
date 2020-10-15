@@ -59,7 +59,6 @@ class Inviscid_Burgers_1D_Adaptive_h:
         print('CFL time: ', self.adv_cfl)
         print('Tolerance:', self.error_tol)
         self.dt = 1.25 * self.adv_cfl                      # N * CFL condition
-        self.nsteps = int(np.ceil(self.tmax/self.dt))     # number of time steps
         self.R = 1./6. * self.eta/self.dx    
 
     ### Operator matrices
@@ -88,7 +87,7 @@ class Inviscid_Burgers_1D_Adaptive_h:
         -------
         u_sol       : 1D vector u (output) after time dt
         u           : 1D vector u (input)
-        2 + its_sol : Number of matrix-vector products
+        1 + its_sol : Number of matrix-vector products
     
         """
 
@@ -138,8 +137,8 @@ class Inviscid_Burgers_1D_Adaptive_h:
         ### Create directory
         emax = '{:5.1e}'.format(self.error_tol)
         n_val = '{:3.0f}'.format(self.N)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/D - 100/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB43/3rd order/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/D - 100/N_" + str(n_val))
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB43/3rd order/")
+        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val))
         
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -321,7 +320,7 @@ class Inviscid_Burgers_1D_Adaptive_h:
         file_res = open(path + 'Results.txt', 'w+')
         file_res.write('Number of time steps = %d' % counter + '\n')
         file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
-        file_res.write('Cost controller used in %d' % cost_iter + ' time steps.')
+        file_res.write('Cost controller used in %d' % cost_iter + ' time steps')
         file_res.close()
         
         ### Close files
@@ -332,7 +331,7 @@ class Inviscid_Burgers_1D_Adaptive_h:
         
 ##############################################################################
 
-error_list_1 = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 5e-4, 5e-5, 5e-6, 5e-7, 5e-8]
+error_list_1 = [1e-4, 1e-5, 1e-6, 1e-7, 5e-5, 5e-6, 5e-7, 5e-8]
 # error_list_3 = [1e-4]
 
 ## Assign values for N, tmax, tol, and eta
@@ -343,9 +342,9 @@ for ii in error_list_1:
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
-    N = 700
+    N = 100
     t_max = 5e-2
-    eta = 100
+    eta = 50
     error_tol = ii
 
     def main():

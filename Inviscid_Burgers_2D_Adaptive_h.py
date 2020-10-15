@@ -124,11 +124,11 @@ class Inviscid_Burgers_2D_Adaptive_h:
         f_u = self.A.dot(u**2)
         
         ### Change integrator as needed
-        u_sol, its_sol = EXPRB43(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
+        u_sol, its_sol = EXPRB43(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)[2:4]
         
         global Ref_integrator, Method_order
-        Ref_integrator = RK4
-        Method_order = 3
+        Ref_integrator = RKF5
+        Method_order = 4
 
         return u_sol, u, 1 + its_sol   
     
@@ -151,8 +151,11 @@ class Inviscid_Burgers_2D_Adaptive_h:
         
         ### Create directory
         emax = '{:5.1e}'.format(self.error_tol)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/2D/Inviscid/Adaptive/A/N_50_50/eta_50_50/Non Penalized/tol " + str(emax) + "/EXPRB43/3rd order/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/2D/Inviscid/Adaptive/A/N_50_50/eta_50_50/")
+        nx = '{:2.0f}'.format(self.N_x); ny = '{:2.0f}'.format(self.N_y)
+        vx = '{:2.0f}'.format(self.eta_x); vy = '{:2.0f}'.format(self.eta_y)
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/2D/Inviscid/Adaptive/D/N_" + str(nx) + "_" + str(ny) + \
+                                  "/eta_" + str(vx) + "_" + str(vy) + "/Traditional/tol " + str(emax) + "/EXPRB43/4th order/")
+        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/2D/Inviscid/Adaptive/D/N_" + str(nx) + "_" + str(ny) + "/eta_" + str(vx) + "_" + str(vy))
         
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -344,18 +347,21 @@ class Inviscid_Burgers_2D_Adaptive_h:
 ##############################################################################
 
 error_list_1 = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 5e-4, 5e-5, 5e-6, 5e-7, 5e-8]
-error_list_3 = [1e-4]
+error_list_2 = [1e-4]
 
 ## Assign values for N, tmax, and eta
-for ii in error_list_3:
+for ii in error_list_1:
+    
+    print('--------------------------------------------------------------')
+    print('--------------------------------------------------------------')
 
     loopTime = datetime.now()
     
-    N_x = 50
-    N_y = 50
+    N_x = 10
+    N_y = 40
     tmax = 5e-2
-    eta_x = 150
-    eta_y = 150
+    eta_x = 10
+    eta_y = 40
     error_tol = ii
     
     ### 1/(N_x - 1) * eta_x = 1/(N_y - 1) * eta_y for equal numerical diffusion along X and Y
