@@ -62,7 +62,7 @@ class Viscous_Burgers_1D_Constant_h:
         self.dif_cfl = self.dx**2/2
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
-        self.dt = 0.1 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
+        self.dt = 1 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
         self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
         self.R = 1./6. * self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
@@ -180,7 +180,7 @@ class Viscous_Burgers_1D_Constant_h:
         ### Matrix-vector function
         f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
         
-        u_temp, its_sol = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
+        u_temp, its_sol = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)[2:4]
         
         # print('Number of matrix vector products in each iteration =', its_sol)
         
@@ -272,8 +272,8 @@ class Viscous_Burgers_1D_Constant_h:
 
 ### Assign values for N, tmax, and eta
 N = 500
-t_max = 5e-4
-eta = 1
+t_max = 1e-3
+eta = 100
 
 def main():
     sim = Viscous_Burgers_1D_Constant_h(N, t_max, eta)

@@ -396,14 +396,12 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
         
             for ii in range(len(zz)):
                 if abs(zz[ii]) <= 1e-6:
-                    # print('Taylor exp phi 1')
                     var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
         
         elif phi_func == phi_2:
         
             for ii in range(len(zz)):
                 if zz[ii] <= 1e-6:
-                    # print('Taylor exp phi 2')
                     var[ii] = 1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + 1./720.*zz[ii])))
         
         
@@ -411,14 +409,12 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
         
             for ii in range(len(zz)):
                 if abs(zz[ii]) <= 1e-5:
-                    # print('Taylor exp phi 3', zz[ii])
                     var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
                     
         elif phi_func == phi_4:
         
             for ii in range(len(zz)):
                 if abs(zz[ii]) <= 1e-4:
-                    # print('Taylor exp phi 4')
                     var[ii] = 1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + zz[ii] * (1./5040. + 1./40320.*zz[ii])))
         
         else:

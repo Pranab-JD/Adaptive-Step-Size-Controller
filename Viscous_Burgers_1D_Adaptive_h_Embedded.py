@@ -126,45 +126,45 @@ class Viscous_Burgers_1D_Adaptive_h:
         f_u = self.A_adv.dot(u**2) + self.A_dif.dot(u)
 
         ### Change integrator as needed
-        u_sol_3, its_sol_3, u_sol_4, its_sol_4 = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv, self.error_tol)
+        u_sol_3, its_sol_3, u_sol_4, its_sol_4 = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
 
         global Ref_integrator, Method_order
-        Ref_integrator = RKF5
-        Method_order = 3
+        # Ref_integrator = RKF5
+        Method_order = 4
 
-        return u_sol_3, u_sol_4, u, its_sol_3, its_sol_4    ## + 2
+        return u_sol_3, u_sol_4, u, its_sol_3, its_sol_4 + 2 + its_power
 
     ##############################################################################
 
     def run(self):
 
-        ### Create directory
-        emax = '{:5.1e}'.format(self.error_tol)
-        n_val = '{:3.0f}'.format(self.N)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D - 100/N_" + str(n_val) + "/Traditional/Embedded/tol " + str(emax) + "/EXPRB43/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D - 100/N_" + str(n_val))
-
-        if os.path.exists(path):
-            shutil.rmtree(path)                     # remove previous directory with same name
-        os.makedirs(path, 0o777)                    # create directory with access rights
-
-        ### Write simulation parameters to a file
-        file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
-        file_param.write('N = %d' % self.N + '\n')
-        file_param.write('eta = %f' % self.eta + '\n')
-        file_param.write('CFL time = %.5e' % self.adv_cfl + '\n')
-        file_param.write('Simulation time = %e' % self.tmax + '\n')
-        file_param.write('Max. error = %e' % self.error_tol)
-        file_param.close()
-
-        ## Create files
-        file_1 = open(path + "u.txt", 'w+')
-        file_2 = open(path + "u_ref.txt", 'w+')
-        file_3 = open(path + "dt.txt", 'w+')
-
-        ## Write initial value of u to files
-        file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
-        file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
+        # ### Create directory
+        # emax = '{:5.1e}'.format(self.error_tol)
+        # n_val = '{:3.0f}'.format(self.N)
+        # path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D - 100/N_" + str(n_val) + "/Traditional/Embedded/tol " + str(emax) + "/EXPRB43/")
+        # path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/D - 100/N_" + str(n_val))
+        # 
+        # if os.path.exists(path):
+        #     shutil.rmtree(path)                     # remove previous directory with same name
+        # os.makedirs(path, 0o777)                    # create directory with access rights
+        # 
+        # ### Write simulation parameters to a file
+        # file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
+        # file_param.write('N = %d' % self.N + '\n')
+        # file_param.write('eta = %f' % self.eta + '\n')
+        # file_param.write('CFL time = %.5e' % self.adv_cfl + '\n')
+        # file_param.write('Simulation time = %e' % self.tmax + '\n')
+        # file_param.write('Max. error = %e' % self.error_tol)
+        # file_param.close()
+        # 
+        # ## Create files
+        # file_1 = open(path + "u.txt", 'w+')
+        # file_2 = open(path + "u_ref.txt", 'w+')
+        # file_3 = open(path + "dt.txt", 'w+')
+        # 
+        # ## Write initial value of u to files
+        # file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+        # file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
 
         time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
@@ -210,8 +210,6 @@ class Viscous_Burgers_1D_Adaptive_h:
 
                 ############## --------------------- ##############
 
-                counts_3 = 0; counts_4 = 0; n_iters = 1000
-
                 if error > self.error_tol:
 
                     u_sol_3, u_sol_4, dt_inp, dt_used, dt_trad, num_mv_trad_3, num_mv_trad_4 = Trad_Controller(self.Solution, Method_order, \
@@ -232,14 +230,11 @@ class Viscous_Burgers_1D_Adaptive_h:
 
             else:
 
-                if dt_trad <= 1e-9:
-                    dt_trad = 1.25 * min(self.adv_cfl, self.dif_cfl)
-
                 ## Traditional Controller
                 u_sol_3, u_sol_4, u, num_mv_sol_3, num_mv_sol_4 = self.Solution(self.u, dt_trad)
                 u_sol_3, u_sol_4, dt_inp, dt_used, dt_trad, num_mv_trad_3, num_mv_trad_4 = Trad_Controller(self.Solution, Method_order, \
-                                                                                                          u_sol_3, u_sol_4, u, dt_trad, self.error_tol)
-
+                                                                                                           u_sol_3, u_sol_4, u, dt_trad, self.error_tol)
+                
                 cost_trad = num_mv_sol_3 + num_mv_trad_3 + num_mv_sol_4 + num_mv_trad_4
                 cost_cont = 0
                 trad_iter = trad_iter + 1
@@ -249,43 +244,62 @@ class Viscous_Burgers_1D_Adaptive_h:
                 # ### Cost controller
                 # mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
                 # dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
-                #
+                # 
                 # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
-                #
+                # 
+                # # if dt_trad <= 8e-8:
+                # #     dt_trad = 1.25 * min(self.adv_cfl, self.dif_cfl)
+                # 
                 # dt = min(dt_controller, dt_trad)
-                #
+                # 
                 # ############## --------------------- ##############
-                #
+                # 
                 # ### Solve with dt
                 # u_sol_3, u_sol_4, u, num_mv_sol_3, num_mv_sol_4 = self.Solution(self.u, dt)
-                #
+                # 
                 # ### Reference Solution and error
                 # error = np.mean(abs(u_sol_3 - u_sol_4))
-                #
+                # 
                 # ############## --------------------- ##############
-                #
-                # if error > self.error_tol or dt == dt_trad:
-                #
+                # 
+                # if error > self.error_tol:
+                #     
+                #     # print('Error = ', error)
+                #     
+                #     ### Traditional controller
                 #     u_sol_3, u_sol_4, dt_inp, dt_used, dt_trad, num_mv_trad_3, num_mv_trad_4 = Trad_Controller(self.Solution, Method_order, \
                 #                                                                                                 u_sol_3, u_sol_4, u, dt_trad, self.error_tol)
-                #
-                #     ## its_ref_1 added in num_mv_trad
+                #     
+                #     ## its_ref_1, its_ref_2 added in num_mv_trad
                 #     cost_trad = num_mv_sol_3 + num_mv_sol_4 + num_mv_trad_3 + num_mv_trad_4
                 #     cost_cont = 0
                 #     trad_iter = trad_iter + 1
-                #
+                #        
                 # else:
-                #
-                #     ### Cost controller
-                #     cost_cont = num_mv_sol_3 + num_mv_sol_4
-                #     cost_trad = 0
-                #     cost_iter = cost_iter + 1
-                #
+                #     
+                #     if dt == dt_trad:
+                # 
+                #         ### dt from traditional controller used; error < tolerance
+                #         cost_trad = num_mv_sol_3 + num_mv_sol_4
+                #         cost_cont = 0
+                #         trad_iter = trad_iter + 1
+                # 
+                #     elif dt == dt_controller:
+                #         
+                #         ### dt from cost controller used
+                #         cost_cont = num_mv_sol_3 + num_mv_sol_4
+                #         cost_trad = 0
+                #         cost_iter = cost_iter + 1
+                #         
+                #     else:
+                #         
+                #         print('Error in selecting dt!! Unknown dt used!!!')
+                #         
+                #     ############## --------------------- ##############
+                #     
                 #     ## dt used in this time step
                 #     dt_used = dt
-                #
-                #     ############## --------------------- ##############
-                #
+                #                           
                 #     ### Estimate of dt for next time step using traditional controller ###
                 #     new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
                 #     dt_trad = 0.875 * new_dt          # Safety factor
@@ -301,36 +315,34 @@ class Viscous_Burgers_1D_Adaptive_h:
             cost_exprb3 = cost_exprb3 + num_mv_sol_3 + num_mv_trad_3
             cost_exprb4 = cost_exprb3 + num_mv_sol_4 + num_mv_trad_4
 
-            self.u = u_sol_3.copy()
+            self.u = u_sol_4.copy()
             self.dt = dt_used
             time = time + self.dt
 
 
-            print('xxxxxxxxxxxxxx ----------- ', self.dt, counter, '------------- xxxxxxxxxxxxxxxx')
-            print('Error Incurred = ', np.mean(abs(u_sol_3 - u_sol_4)))
-            print('-------------------------------------------------------------------')
-            print('-------------------------------------------------------------------')
-            if self.dt <= 1e-10:
-                print('Error!! Error!!!', counter, 'dt = ', self.dt, 'N = ', self.N, 'eta = ', self.eta)
+            # print('xxxxxxxxxxxxxx ----------- ', self.dt, counter, '------------- xxxxxxxxxxxxxxxx')
+            # print('Error Incurred = ', np.mean(abs(u_sol_3 - u_sol_4)))
+            # print('-------------------------------------------------------------------')
+            # print('-------------------------------------------------------------------')
+            # if self.dt <= 1e-10:
+            #     print('Error!! Error!!!', counter, 'dt = ', self.dt, 'N = ', self.N, 'eta = ', self.eta)
 
-            if counter == 10:
-                break
-
-
+            # if counter == 10:
+            #     break
 
             ### Write data to files
-            file_1.write(' '.join(map(str, u_sol_3)) % u_sol_3 + '\n')
-            file_2.write(' '.join(map(str, u_sol_4)) % u_sol_4 + '\n')
-            file_3.write('%.15f' % self.dt + '\n')
+            # file_1.write(' '.join(map(str, u_sol_3)) % u_sol_3 + '\n')
+            # file_2.write(' '.join(map(str, u_sol_4)) % u_sol_4 + '\n')
+            # file_3.write('%.15f' % self.dt + '\n')
 
             ############# --------------------- ##############
 
             ### Test plots
-            plt.plot(self.X, u_sol_4, 'rd', label = 'Reference')
-            plt.plot(self.X, u_sol_3, 'b.', label = 'Data')
-            plt.legend()
-            plt.pause(self.dt/4)
-            plt.clf()
+            # plt.plot(self.X, u_sol_4, 'rd', label = 'Reference')
+            # plt.plot(self.X, u_sol_3, 'b.', label = 'Data')
+            # plt.legend()
+            # plt.pause(self.dt/4)
+            # plt.clf()
 
             ############## --------------------- ##############
 
@@ -341,25 +353,27 @@ class Viscous_Burgers_1D_Adaptive_h:
 
         ############## --------------------- ##############
 
-        ### Write simulation results to file
-        file_res = open(path + 'Results.txt', 'w+')
-        file_res.write('Number of time steps = %d' % counter + '\n')
-        file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
-        file_res.write('Number of matrix-vector products (3rd order) = %d' % cost_exprb3 + '\n')
-        file_res.write('Number of matrix-vector products (4th order) = %d' % cost_exprb4 + '\n')
-        file_res.write('Cost controller used in %d' % cost_iter + ' time steps')
-        file_res.close()
+        # ### Write simulation results to file
+        # file_res = open(path + 'Results.txt', 'w+')
+        # file_res.write('Number of time steps = %d' % counter + '\n')
+        # file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
+        # file_res.write('Number of matrix-vector products (3rd order) = %d' % cost_exprb3 + '\n')
+        # file_res.write('Number of matrix-vector products (4th order) = %d' % cost_exprb4 + '\n')
+        # file_res.write('Cost controller used in %d' % cost_iter + ' time steps')
+        # file_res.close()
+        # 
+        # ### Close files
+        # file_1.close()
+        # file_2.close()
+        # file_3.close()
 
-        ### Close files
-        file_1.close()
-        file_2.close()
-        file_3.close()
-
+        x_cnt = np.arange(0, counter, 1)
+        plt.plot(x_cnt, dt_temp)
 
 ##############################################################################
 
-error_list_1 = [1e-4, 1e-5, 1e-6, 1e-7, 5e-5, 5e-6, 5e-7, 5e-8]
-error_list_2 = [1e-7]
+error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8]
+error_list_2 = [1e-5]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_2:
@@ -370,14 +384,14 @@ for ii in error_list_2:
     print('-----------------------------------------------------------')
 
     N = 500
-    t_max = 1e-3
+    t_max = 1e-2
     eta = 10
     error_tol = ii
 
     def main():
         sim = Viscous_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)
         sim.run()
-        # plt.show()
+        plt.show()
 
     if __name__ == "__main__":
         main()

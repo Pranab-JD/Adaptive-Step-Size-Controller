@@ -314,7 +314,7 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
 ### EXPRB43
 
-def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, tol):
+def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     """
     Parameters
     ----------
@@ -346,8 +346,8 @@ def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, tol):
     
     ############## --------------------- ##############
     
-    a_n_f, its_a = imag_Leja_phi(u, f_u, dt/2, c, Gamma, phi_1, tol, A_adv, m_adv, A_dif, m_dif)
-    b_n_f, its_b = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, tol, A_adv, m_adv, A_dif, m_dif)
+    a_n_f, its_a = imag_Leja_phi(u, f_u, dt/2, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+    b_n_f, its_b = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
     
     a_n = u + a_n_f * dt/2
     b_n = u + b_n_f * dt
@@ -370,9 +370,9 @@ def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, tol):
     
     ############# --------------------- ##############
     
-    u_1 = b_n_f
-    u_nl_3, its_3 = imag_Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, tol, A_adv, m_adv, A_dif, m_dif)
-    u_nl_4, its_4 = imag_Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, tol, A_adv, m_adv, A_dif, m_dif)
+    u_1 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)[0]
+    u_nl_3, its_3 = imag_Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
+    u_nl_4, its_4 = imag_Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_adv, m_adv, A_dif, m_dif)
     
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
