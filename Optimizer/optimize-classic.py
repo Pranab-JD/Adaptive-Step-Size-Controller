@@ -103,4 +103,3 @@ def clbk(xk,convergence):
 bounds = [(0.5,2.0),(0.1,1.0),(1.05,1.4),(0.6,0.95)]
 res = differential_evolution(fitness, bounds, disp=True, callback=clbk, popsize=15, maxiter=100)
 print(res.x, res.fun)
-
