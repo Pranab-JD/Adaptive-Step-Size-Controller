@@ -1,5 +1,6 @@
 from numpy import *
 from Leja_Interpolation import *
+from scipy.sparse import csr_matrix
 
 def diffusion_periodic(n):
     A=n**2*(-2*diag(ones(n))+diag(ones(n-1),1)+diag(ones(n-1),-1));
@@ -30,10 +31,7 @@ def x_periodic(n):
 
 """
     Periodic boundary conditions are implemented in all matrices.
-"""
-
-global eigen_min_dif, eigen_max_dif, eigen_imag_dif, c_real_dif, Gamma_real_dif
-global eigen_min_adv, eigen_max_adv, eigen_imag_adv, c_real_adv, Gamma_real_adv
+""" 
 
 
 def initialize_params(n, eta):
@@ -50,8 +48,8 @@ def Viscous_Burgers(n, x):
 
     X, dx, R, F = initialize_params(n, eta)
 
-    A_adv = zeros((n, n))           # Diffusion Matrix
-    A_dif = zeros((n, n))           # Advection Matrix
+    A_dif = zeros((n, n))           # Diffusion Matrix
+    A_adv = zeros((n, n))           # Advection Matrix
 
     for ij in range(n):
         A_adv[ij, int(ij + 2) % n] = - R/2
@@ -66,24 +64,6 @@ def Viscous_Burgers(n, x):
     A_adv = csr_matrix(A_adv)
     A_dif = csr_matrix(A_dif)
 
-    ### Eigen values and c and Gamma
-    ## Diffusion
-    eigen_min_dif = 0
-    eigen_max_dif, eigen_imag_dif = Gershgorin(self.A_dif)      # Max real, imag eigen value
-    c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
-    Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
-
-    ## Advection
-    eigen_min_adv = 0
-    eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(A_adv, u, 2)   # Max real, imag eigen value
-    eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
-    eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
-
-    c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
-    Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
-    c_imag_adv = 0
-    Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
-
     return A_adv, A_dif
 
 
@@ -91,7 +71,7 @@ def Inviscid_Burgers(n, x):
 
     X, dx, R, F = initialize_params(n, eta)
 
-    A_dif = zeros((n, n))           # Advection Matrix
+    A_adv = zeros((n, n))           # Advection Matrix
 
     for ij in range(n):
         A_adv[ij, int(ij + 2) % n] = - R/2
