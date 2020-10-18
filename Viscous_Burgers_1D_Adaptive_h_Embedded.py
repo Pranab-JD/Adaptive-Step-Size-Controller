@@ -6,7 +6,7 @@ Created on Thu Aug  6 17:29:51 2020
 Description: -
     This code solves the viscous Burgers' equation:
     du/dt = d^2u/dx^2 + eta * d(u^2)/dx (1D)
-    using different time integrators.
+    using embedded EXPRB43.
     Advective term - 3rd order upwind scheme
     Adaptive step size is implemented.
 
@@ -126,11 +126,10 @@ class Viscous_Burgers_1D_Adaptive_h:
         f_u = self.A_adv.dot(u**2) + self.A_dif.dot(u)
 
         ### Change integrator as needed
-        u_sol_3, its_sol_3, u_sol_4, its_sol_4 = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
+        u_sol_3, its_sol_3, u_sol_4, its_sol_4 = EXPRB32(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
 
-        global Ref_integrator, Method_order
-        # Ref_integrator = RKF5
-        Method_order = 4
+        global Method_order 
+        Method_order = 3
 
         return u_sol_3, u_sol_4, u, its_sol_3, its_sol_4 + 2 + its_power
 
@@ -173,8 +172,6 @@ class Viscous_Burgers_1D_Adaptive_h:
         mat_vec_prod = []
         dt_temp = []
 
-        cost_exprb3 = 0
-        cost_exprb4 = 0
         cost_iter = 0
         trad_iter = 0
         dt_trad = self.dt
@@ -312,8 +309,6 @@ class Viscous_Burgers_1D_Adaptive_h:
             count_mv = count_mv + count_mv_iter                 # Total no. of matrix-vector products
             mat_vec_prod.append(count_mv_iter)                  # List of no. of matrix-vector products at each time step
             dt_temp.append(dt_used)                             # List of no. of dt at each time step
-            cost_exprb3 = cost_exprb3 + num_mv_sol_3 + num_mv_trad_3
-            cost_exprb4 = cost_exprb3 + num_mv_sol_4 + num_mv_trad_4
 
             self.u = u_sol_4.copy()
             self.dt = dt_used
@@ -338,18 +333,17 @@ class Viscous_Burgers_1D_Adaptive_h:
             ############# --------------------- ##############
 
             ### Test plots
-            # plt.plot(self.X, u_sol_4, 'rd', label = 'Reference')
-            # plt.plot(self.X, u_sol_3, 'b.', label = 'Data')
-            # plt.legend()
-            # plt.pause(self.dt/4)
-            # plt.clf()
+            plt.plot(self.X, u_sol_4, 'rd', label = 'Reference')
+            plt.plot(self.X, u_sol_3, 'b.', label = 'Data')
+            plt.legend()
+            plt.pause(self.dt/4)
+            plt.clf()
 
             ############## --------------------- ##############
 
         print('Cost controller used in ', cost_iter, 'time steps')
         print('Traditional controller used in ', trad_iter, 'time steps')
         print('Number of time steps = ', counter)
-        print('Total number of matrix-vector products = ', count_mv, 'EXPRB3 = ', cost_exprb3, 'EXPRB4 = ', cost_exprb4)
 
         ############## --------------------- ##############
 
@@ -357,8 +351,6 @@ class Viscous_Burgers_1D_Adaptive_h:
         # file_res = open(path + 'Results.txt', 'w+')
         # file_res.write('Number of time steps = %d' % counter + '\n')
         # file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
-        # file_res.write('Number of matrix-vector products (3rd order) = %d' % cost_exprb3 + '\n')
-        # file_res.write('Number of matrix-vector products (4th order) = %d' % cost_exprb4 + '\n')
         # file_res.write('Cost controller used in %d' % cost_iter + ' time steps')
         # file_res.close()
         # 
@@ -373,7 +365,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 ##############################################################################
 
 error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8]
-error_list_2 = [1e-5]
+error_list_2 = [1e-7]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_2:
@@ -384,8 +376,8 @@ for ii in error_list_2:
     print('-----------------------------------------------------------')
 
     N = 500
-    t_max = 1e-2
-    eta = 10
+    t_max = 1e-3
+    eta = 100
     error_tol = ii
 
     def main():

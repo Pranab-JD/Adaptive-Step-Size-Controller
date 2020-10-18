@@ -6,7 +6,7 @@ Created on Thu Aug  6 17:29:51 2020
 Description: -
     This code solves the viscous Burgers' equation:
     du/dt = d^2u/dx^2 + eta * d(u^2)/dx (1D)
-    using different time integrators.
+    using different exponential time integrators.
     Advective term - 3rd order upwind scheme
     Adaptive step size is implemented.
 
@@ -126,11 +126,11 @@ class Viscous_Burgers_1D_Adaptive_h:
         f_u = self.A_adv.dot(u**2) + self.A_dif.dot(u)
 
         ### Change integrator as needed
-        u_sol, its_sol = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
+        u_sol, its_sol = EXPRB32(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
 
         global Ref_integrator, Method_order
         # Ref_integrator = RKF5
-        Method_order = 3
+        Method_order = 2
 
         return u_sol, u, 2 + its_sol + its_power
 
@@ -186,7 +186,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 
                 ### Traditional Controller
                 u_sol, u, num_mv_sol = self.Solution(self.u, dt_trad)
-                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation_2(self.Solution, Method_order, \
+                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation(self.Solution, Method_order, \
                                                                                                 u_sol, u, dt_trad, self.error_tol)
 
                 cost_trad = num_mv_sol + num_mv_trad
@@ -215,7 +215,7 @@ class Viscous_Burgers_1D_Adaptive_h:
                     print('Error > tol in the final time step!! Reducing dt.......')
 
                     ### Traditional controller
-                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation_2(self.Solution, Method_order, \
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation(self.Solution, Method_order, \
                                                                                                     u_sol, u, dt_final, self.error_tol)
 
                     ## its_ref_1 added in num_mv_trad
@@ -235,7 +235,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 
                 ### Traditional Controller
                 u_sol, u, num_mv_sol = self.Solution(self.u, dt_trad)
-                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation_2(self.Solution, Method_order, \
+                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation(self.Solution, Method_order, \
                                                                                                 u_sol, u, dt_trad, self.error_tol)
 
                 cost_trad = num_mv_sol + num_mv_trad
@@ -248,7 +248,7 @@ class Viscous_Burgers_1D_Adaptive_h:
                 # mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
                 # dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
                 #
-                # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
+                # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1, Non_Penalized)
                 #
                 # if dt_trad <= 8e-8:
                 #     dt_trad = 1.25 * min(self.adv_cfl, self.dif_cfl)
@@ -272,7 +272,7 @@ class Viscous_Burgers_1D_Adaptive_h:
                 #     # print('Error = ', error)
                 #
                 #     ### Traditional controller
-                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation_2(self.Solution, Method_order, \
+                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Richardson_Extrapolation(self.Solution, Method_order, \
                 #                                                                                     u_sol, u, dt, self.error_tol)
                 #
                 #     ## its_ref_1, its_ref_2 added in num_mv_trad
@@ -333,11 +333,11 @@ class Viscous_Burgers_1D_Adaptive_h:
             ############# --------------------- ##############
 
             ## Test plots
-            # plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            # plt.plot(self.X, u_sol, 'b.', label = 'Data')
-            # plt.legend()
-            # plt.pause(self.dt/4)
-            # plt.clf()
+            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
+            plt.plot(self.X, u_sol, 'b.', label = 'Data')
+            plt.legend()
+            plt.pause(self.dt/4)
+            plt.clf()
 
             ############## --------------------- ##############
 
@@ -366,7 +366,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 ##############################################################################
 
 error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8]
-error_list_2 = [1e-5]
+error_list_2 = [1e-6]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_2:
@@ -377,7 +377,7 @@ for ii in error_list_2:
     print('-----------------------------------------------------------')
 
     N = 500
-    t_max = 1e-2
+    t_max = 1e-3
     eta = 10
     error_tol = ii
 

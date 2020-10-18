@@ -6,8 +6,7 @@ Created on Tue Apr 10 17:43:41 2020
 Description: -
     This code solves the linear Diffusion-Advection equation:
     du/dt = eta * du/dx + d^2u/dx^2 (1D)
-    using Crank-Nicolson, RKF4, SDIRK23,
-    ETD, and ETDRK2 schemes.
+    using different exponential time integrators.
     Advective term - 1st order upwind scheme
     Step size is adaptive.
 

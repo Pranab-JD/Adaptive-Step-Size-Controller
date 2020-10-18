@@ -4,8 +4,8 @@ Created on Wed Aug 19 16:17:29 2020
 @author: Pranab JD
 
 Description: -
-        Contains several integrators for viscous Burgers'
-        equation (A_Adv.u^m_adv + A_Diff.u^m_dif)
+        Contains several integrators 2 matrices equations
+        (A_Adv.u^m_adv + A_Diff.u^m_dif)
 
 """
 
@@ -269,7 +269,7 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
     Returns
     -------
-    u_exprb42   : 1D vector u (output) after time dt
+    u_exprb42   : 1D vector u (output) after time dt (4th order)
     mat_vec_num : # of matrix-vector products
 
     """
@@ -312,6 +312,62 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
 ##############################################################################
 
+def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
+    """
+    Parameters
+    ----------
+    A_adv   : Advection matrix (A)
+    m_adv   : Index of u (u^m_adv); advection
+    A_dif   : Diffusion matrix (A)
+    m_dif   : Index of u (u^m_dif); diffusion
+    u       : 1D vector u (Input)
+    dt      : dt
+    c, Gamma: Parameters for Leja extrapolation
+
+    Returns
+    -------
+    u_exprb32   : 1D vector u (output) after time dt (2nd and 3rd order)
+    mat_vec_num : # of matrix-vector products
+
+    """
+    
+    epsilon = 1e-7
+    
+    ############## --------------------- ##############
+    
+    ### Matrix-vector function
+    f_u = A_adv.dot(u**m_adv) + A_dif.dot(u**m_dif)
+
+    ### J(u) * u
+    Linear_u = (A_adv.dot((u + (epsilon * u))**m_adv) + A_dif.dot((u + (epsilon * u))**m_dif) - f_u)/epsilon
+
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u - Linear_u
+    
+    ############## --------------------- ##############
+    
+    a_n_f, its_a = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+    a_n = u + a_n_f * dt
+
+    ############## --------------------- ##############
+    
+    ### J(u) * a
+    Linear_a = (A_adv.dot((u + (epsilon * a_n))**m_adv) + A_dif.dot((u + (epsilon * a_n))**m_dif) - f_u)/epsilon
+    
+    ### F(a) = f(a) - (J(u) * a)
+    Nonlin_a = A_adv.dot(a_n**m_adv) + A_dif.dot(a_n**m_dif) - Linear_a
+    
+    ############## --------------------- ##############
+    
+    u_nl_3, its_3 = imag_Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
+    
+    u_exprb3 = u + (a_n_f * dt) + (u_nl_3 * 2 * dt)
+    
+    return a_n, its_a, u_exprb3, its_3
+    
+##############################################################################
+    
+    
 ### EXPRB43
 
 def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
@@ -328,7 +384,7 @@ def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
     Returns
     -------
-    u_exprb43   : 1D vector u (output) after time dt (3rd and/or 4th order)
+    u_exprb43   : 1D vector u (output) after time dt (3rd and 4th order)
     mat_vec_num : # of matrix-vector products
 
     """

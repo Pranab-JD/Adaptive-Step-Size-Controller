@@ -164,84 +164,7 @@ def Higher_Order_Method_2(A_adv, m_adv, A_dif, m_dif, Method, p, Method_ref, u_s
 
 ################################################################################################
 
-def Richardson_Extrapolation_1(Method, p, u_sol, u, dt_inp, tol):
-    """
-    Parameters
-    ----------
-    Method      		: Time integration scheme (function: Solution)
-    p           		: Order of Method
-    u_sol       		: Solution using desired integrator
-    u            		: 1D vector u (input)
-    dt_inp      		: dt input
-    tol         		: Maximum tolerance
-
-    Returns
-    ---------
-    u_sol       		: Solution using desired integrator (same as input, if error < tol)
-    u_ref       		: Reference solution (same as input, if error < tol)
-    dt_inp          	: dt input
-    dt_used				: dt used in this time step (= dt_inp, if error < tol)
-    dt_new				: dt for next time step (= dt used, if error > tol)
-    counts+its_ref_1    : Number of matrix-vector products (= its_ref_1, if error < tol)
-
-    """
-
-    ## Max. number of iters to achieve tolerance in a single time loop
-    n_iters = 1000
-    counts = 0              # Counter for matrix-vector products
-
-    u_ref_1, u, its_ref_1 = Method(u, dt_inp/2)
-    u_ref, u, its_ref_2 = Method(u_ref_1, dt_inp/2)
-
-    ### Error estimate ###
-    error = np.mean(abs(u_ref - u_sol))
-
-    ### If error > tol, reduce dt till error < tol
-    if error > tol:
-
-        dt = dt_inp
-
-        for mm in range(n_iters):
-
-            ### Step size controller ###
-            new_dt = dt * (tol/error)**(1/(p + 1))
-            dt = 0.875 * new_dt          # Safety factor
-
-            ## Re-calculate u_ref, u_sol, and error
-            u_ref_1, u, its_ref_3 = Method(u, dt/2)
-            u_ref, u, its_ref_4 = Method(u_ref_1, dt/2)
-            u_sol, u, its_method = Method(u, dt)
-
-            error = np.mean(abs(u_ref - u_sol))
-
-            ### Matrix-vector products
-            counts = counts + its_method + its_ref_3 + its_ref_4
-
-            if error <= tol:
-                # print('Error within limits. dt accepted!! Error = ', error)
-                dt_used = dt
-                dt_new = dt
-                break
-
-            ## Error alert
-            if mm == (n_iters - 1):
-                print('Max iterations reached. Check parameters!!!')
-
-    ## Increase/decrease dt for next time step
-    else:
-
-        dt_used = dt_inp
-
-        ### Step size controller ###
-        new_dt = dt_inp * (tol/error)**(1/(p + 1))
-        dt_new = 0.875 * new_dt          # Safety factor
-
-    return u_sol, u_ref, dt_inp, dt_used, dt_new, counts + its_ref_1 + its_ref_2
-
-
-################################################################################################
-
-def Richardson_Extrapolation_2(Method, p, u_sol, u, dt_inp, tol):
+def Richardson_Extrapolation(Method, p, u_sol, u, dt_inp, tol):
     """
     Parameters
     ----------
@@ -367,7 +290,7 @@ def Trad_Controller(Method, p, u_sol_3, u_sol_4, u, dt_inp, tol):
 
 ################################################################################################
 
-def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
+def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_Nonpen):
 
     cost_n = count_mat_vec_n/dt_n
     cost_n_1 = count_mat_vec_n_1/dt_n_1
@@ -390,8 +313,12 @@ def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
 
         return alpha, beta, lambd, delta
 
-    alpha, beta, lambd, delta = Non_penalized()
-    # alpha, beta, lambd, delta = Penalized()
+    if Pen_Nonpen == Non_Penalized:
+        alpha, beta, lambd, delta = Non_penalized()
+    elif Pen_Nonpen == Penalized:
+        alpha, beta, lambd, delta = Penalized()
+    else:
+        print('Error!! Check controller')
 
     Del = (np.log(cost_n) - np.log(cost_n_1))/(np.log(dt_n) - np.log(dt_n_1))
 

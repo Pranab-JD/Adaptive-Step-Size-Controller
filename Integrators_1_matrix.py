@@ -4,8 +4,8 @@ Created on Wed Sep 04 16:15:14 2020
 @author: Pranab JD
 
 Description: -
-        Contains several integrators for inviscid Burgers'
-        equation (A_Adv.u^2)
+        Contains several integrators for 1 matrix equations
+        (A_Adv.u^m_adv)
 
 """
 
@@ -248,6 +248,34 @@ def EXPRB42(A_adv, m_adv, u, dt, c, Gamma):
     return u_exprb42, 4 + its_a + its_1 + its_3
 
 ##############################################################################
+
+def EXPRB32(A_adv, m_adv, u, dt, c, Gamma):
+    
+    epsilon = 1e-7
+    
+    ############## --------------------- ##############
+    
+    ### Matrix-vector function
+    f_u = A_adv.dot(u**m_adv)
+
+    ### J(u) * u
+    Linear_u = (A_adv.dot((u + (epsilon * u))**m_adv) - f_u)/epsilon
+
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u - Linear_u
+    
+    ############## --------------------- ##############
+    
+    a_n_f, its_a = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
+    a_n = u + a_n_f * dt
+
+    ############## --------------------- ##############
+    
+    u_nl_3, its_3 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
+    
+    
+    
+    
 
 ### EXPRB43 ###
 
