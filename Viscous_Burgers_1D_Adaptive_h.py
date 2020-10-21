@@ -123,16 +123,15 @@ class Viscous_Burgers_1D_Adaptive_h:
         ############## --------------------- ##############
 
         ### RHS of PDE (in the form of matrix-vector product)
-        f_u = self.A_adv.dot(u**2) + self.A_dif.dot(u)
+        # f_u = self.A_adv.dot(u**2) + self.A_dif.dot(u)
 
         ### Change integrator as needed
         u_sol, its_sol = EXPRB32(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
 
-        global Ref_integrator, Method_order
-        # Ref_integrator = RKF5
-        Method_order = 2
+        global Method_order
+        Method_order = 3
 
-        return u_sol, u, 2 + its_sol + its_power
+        return u_sol, u, its_sol + its_power
 
     ##############################################################################
 
@@ -319,7 +318,7 @@ class Viscous_Burgers_1D_Adaptive_h:
             mat_vec_prod.append(count_mv_iter)                  # List of no. of matrix-vector products at each time step
             dt_temp.append(dt_used)                             # List of no. of dt at each time step
 
-            self.u = u_sol.copy()
+            self.u = u_ref.copy()
             self.dt = dt_used
             time = time + self.dt
 
@@ -366,7 +365,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 ##############################################################################
 
 error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8]
-error_list_2 = [1e-6]
+error_list_2 = [1e-5]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_2:
@@ -378,7 +377,7 @@ for ii in error_list_2:
 
     N = 500
     t_max = 1e-3
-    eta = 10
+    eta = 100
     error_tol = ii
 
     def main():

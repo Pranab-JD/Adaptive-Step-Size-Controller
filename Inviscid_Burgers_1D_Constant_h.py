@@ -6,7 +6,7 @@ Created on Tue Apr 07 23:10:04 2020
 Description: -
     This code solves the inviscid Burgers' Equation:
     du/dt = eta * d(u^2)/dx + g(u) (1D)
-    using different exponential time integrators.
+    using different time integrators.
     Advective term - 3rd order upwind scheme
     Step size is constant.
 

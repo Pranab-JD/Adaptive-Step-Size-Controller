@@ -87,7 +87,7 @@ def Higher_Order_Method_1(A_adv, m_adv, Method, p, Method_ref, u_sol, u, dt_inp,
 
 ################################################################################################
 
-def Higher_Order_Method_2(A_adv, m_adv, A_dif, m_dif, Method, p, Method_ref, u_sol, u, dt_inp, tol):
+def Higher_Order_Method_2(Method, p, u_sol, u_ref, u, dt_inp, tol):
     """
     Parameters
     ----------
@@ -116,8 +116,6 @@ def Higher_Order_Method_2(A_adv, m_adv, A_dif, m_dif, Method, p, Method_ref, u_s
     n_iters = 1000
     counts = 0              # Counter for matrix-vector products
 
-    u_ref, its_ref_1 = Method_ref(A_adv, m_adv, A_dif, m_dif, u, dt_inp)
-
     ### Error estimate ###
     error = np.mean(abs(u_ref - u_sol))
 
@@ -133,12 +131,11 @@ def Higher_Order_Method_2(A_adv, m_adv, A_dif, m_dif, Method, p, Method_ref, u_s
             dt = 0.875 * new_dt          # Safety factor
 
             ## Re-calculate u_ref, u_sol, and error
-            u_ref, its_ref_2 = Method_ref(A_adv, m_adv, A_dif, m_dif, u, dt)
-            u_sol, u, its_method = Method(u, dt)
+            u_sol, u_ref, u, its_method = Method(u, dt)
             error = np.mean(abs(u_ref - u_sol))
 
             ### Matrix-vector products
-            counts = counts + its_method + its_ref_2
+            counts = counts + its_method
 
             if error <= tol:
                 # print('Error within limits. dt accepted!! Error = ', error)
@@ -160,7 +157,7 @@ def Higher_Order_Method_2(A_adv, m_adv, A_dif, m_dif, Method, p, Method_ref, u_s
         new_dt = dt_inp * (tol/error)**(1/(p + 1))
         dt_new = 0.875 * new_dt          # Safety factor
 
-    return u_sol, u_ref, dt_inp, dt_used, dt_new, counts + its_ref_1
+    return u_sol, u_ref, dt_inp, dt_used, dt_new, counts
 
 ################################################################################################
 
@@ -243,54 +240,43 @@ def Richardson_Extrapolation(Method, p, u_sol, u, dt_inp, tol):
 
 ################################################################################################
 
-def Trad_Controller(Method, p, u_sol_3, u_sol_4, u, dt_inp, tol):
+def Trad_Controller(Method, p, error, u, dt_inp, tol):
 
-    error = np.mean(abs(u_sol_3 - u_sol_4))
+    ## Max. number of iters to achieve tolerance in a single time loop
+    n_iters = 1000
+    counts = 0              # Counter for matrix-vector products
 
-    counts_3 = 0; counts_4 = 0; n_iters = 1000
+    dt = dt_inp
 
-    if error > tol:
-
-        dt = dt_inp
-
-        for mm in range(n_iters):
-
-            ### Step size controller ###
-            new_dt = dt * (tol/error)**(1/(p + 1))
-            dt = 0.875 * new_dt          # Safety factor
-
-            ## Re-calculate u_ref, u_sol, and error
-            u_sol_3, u_sol_4, u, num_mv_sol_3_err, num_mv_sol_4_err = Method(u, dt)
-            error = np.mean(abs(u_sol_3 - u_sol_4))
-
-            ### Matrix-vector products
-            counts_3 = counts_3 + num_mv_sol_3_err
-            counts_4 = counts_4 + num_mv_sol_4_err
-
-            if error <= tol:
-                dt_used = dt
-                dt_new = dt
-                break
-
-            ## Error alert
-            if mm == (n_iters - 1):
-                print('Max iterations reached. Check parameters!!!')
-
-    ## Increase/decrease dt for next time step
-    else:
-
-        dt_used = dt_inp
+    for mm in range(n_iters):
 
         ### Step size controller ###
-        new_dt = dt_inp * (tol/error)**(1/(p + 1))
-        dt_new = 0.875 * new_dt          # Safety factor
+        new_dt = dt * (tol/error)**(1/(p + 1))
+        dt = 0.875 * new_dt          # Safety factor
 
-    return u_sol_3, u_sol_4, dt_inp, dt_used, dt_new, counts_3, counts_4
+        ## Re-calculate u_ref, u_sol, and error
+        u_sol, u_ref, u, its_method = Method(u, dt)
+        error = np.mean(abs(u_ref - u_sol))
+
+        ### Count of matrix-vector products
+        counts = counts + its_method
+
+        if error <= tol:
+            # print('Error within limits. dt accepted!! Error = ', error)
+            dt_used = dt
+            dt_new = dt
+            break
+
+        ## Error alert
+        if mm == (n_iters - 1):
+            print('Max iterations reached. Check parameters!!!')
+
+    return u_sol, u_ref, dt_inp, dt_used, dt_new, counts
 
 
 ################################################################################################
 
-def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_Nonpen):
+def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
 
     cost_n = count_mat_vec_n/dt_n
     cost_n_1 = count_mat_vec_n_1/dt_n_1
@@ -313,12 +299,15 @@ def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_N
 
         return alpha, beta, lambd, delta
 
-    if Pen_Nonpen == Non_Penalized:
-        alpha, beta, lambd, delta = Non_penalized()
-    elif Pen_Nonpen == Penalized:
-        alpha, beta, lambd, delta = Penalized()
-    else:
-        print('Error!! Check controller')
+    # alpha, beta, lambd, delta = Non_penalized()
+    alpha, beta, lambd, delta = Penalized()
+
+    # if Pen_Nonpen == 0:
+    #     alpha, beta, lambd, delta = Non_penalized()
+    # elif Pen_Nonpen == 1:
+    #     alpha, beta, lambd, delta = Penalized()
+    # else:
+    #     print('Error!! Check controller')
 
     Del = (np.log(cost_n) - np.log(cost_n_1))/(np.log(dt_n) - np.log(dt_n_1))
 

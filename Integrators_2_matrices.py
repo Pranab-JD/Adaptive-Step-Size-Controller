@@ -89,7 +89,7 @@ def RKF5(A_adv, m_adv, A_dif, m_dif, u, dt):
 
 ### ETD ###
 
-def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
+def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     """
     Parameters
     ----------
@@ -137,8 +137,7 @@ def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
         
         ### Solution
         # u_lin, its_lin = imag_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
-        u_nl, its_nl = imag_Leja_phi(u, f_u, dt, Leja_X, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
-        u_nl = u_nl * dt
+        u_nl, its_nl = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
         
         return u_nl, its_nl + 2
     
@@ -148,7 +147,7 @@ def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
     u_nl, mat_vec_num = Imag_Leja()
     
     ### ETD1 Solution ###
-    u_etd = u_nl
+    u_etd = u + (u_nl * dt)
     
     return u_etd, mat_vec_num
 

@@ -6,7 +6,7 @@ Created on Mon Aug  3 11:29:22 2020
 Description: -
     This code solves the viscous Burgers' equation:
     du/dt = d^2u/dx^2 + eta * d(u^2)/dx (1D)
-    using different exponential time integrators.
+    using different time integrators.
     Advective term - 3rd order upwind scheme
     Step size is constant.
 
