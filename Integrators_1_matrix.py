@@ -269,13 +269,30 @@ def EXPRB32(A_adv, m_adv, u, dt, c, Gamma):
     a_n_f, its_a = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
     a_n = u + a_n_f * dt
 
+    u_exprb2 = a_n
+
     ############## --------------------- ##############
     
-    u_nl_3, its_3 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
+    ### J(u) * a
+    Linear_a = (A_adv.dot((u + (epsilon * a_n))**m_adv) - f_u)/epsilon
     
+    ### F(a) = f(a) - (J(u) * a)
+    Nonlin_a = A_adv.dot(a_n**m_adv) - Linear_a
     
+    ############## --------------------- ##############
     
+    ### 3rd order solution
+
+    # u_3, its_3 = imag_Leja_phi(u, func_3, dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
+
+    func_3 = (Nonlin_a - Nonlin_u)
+    u_3, its_3 = imag_Leja_phi(u, func_3, dt, c, Gamma, phi_3, A_adv, m_adv)
+
+    u_exprb3 = u_exprb2 + (u_3 * 2 * dt)
     
+    return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a + its_3
+    
+##############################################################################    
 
 ### EXPRB43 ###
 

@@ -14,19 +14,15 @@ Description: -
 
 import os
 import shutil
-import timeit
 import numpy as np
-from decimal import *
-from Leja_Interpolation import *
 import matplotlib.pyplot as plt
+from Leja_Interpolation import *
 from scipy.sparse import csr_matrix
 from Integrators_2_matrices import *
-
 
 from datetime import datetime
 
 startTime = datetime.now()
-getcontext().prec = 16                  # Precision for decimal numbers
 
 ##############################################################################
 
@@ -54,15 +50,14 @@ class Viscous_Burgers_1D_Constant_h:
     def initialize_U(self):
         u0 = 1 + (np.exp(1 - (1/(1 - (2 * self.X - 1)**2)))) + 1./2. * np.exp(-(self.X - self.x_0)**2/(2 * self.sigma**2))
         self.u = u0.copy()                           
-        self.u_rk4 = u0.copy()                       # Reference solution
 
     ### Parameters
     def initialize_parameters(self):
-        self.adv_cfl = self.dx/abs(self.eta)
+        self.adv_cfl = self.dx/self.eta
         self.dif_cfl = self.dx**2/2
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
-        self.dt = 1 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
+        self.dt = 0.04 * min(self.dif_cfl, self.adv_cfl) # N * CFL condition
         self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
         self.R = 1./6. * self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
@@ -94,80 +89,29 @@ class Viscous_Burgers_1D_Constant_h:
         Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
         
         
-    ##############################################################################
-
-    def Reference_Solution(self):
-        
-        ### Create directory
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/Reference Data/C - 100/2/")
-        
-        if os.path.exists(path):
-            shutil.rmtree(path)                         # remove previous directory with same name
-        os.makedirs(path, 0o777)                        # create directory with access rights
-
-        ### Write simulation parameters to a file
-        file_param = open(path + 'Simulation_Parameters.txt', 'w+')
-        file_param.write('N = %d' % self.N + '\n')
-        file_param.write('eta = %f' % self.eta + '\n')
-        file_param.write('Advection CFL = %.15f' % self.adv_cfl + '\n')
-        file_param.write('Diffusion CFL = %.15f' % self.dif_cfl + '\n')
-        file_param.write('dt = %.15f' % self.dt + '\n')
-        file_param.write('Simulation time = %f' % self.tmax + '\n')
-        file_param.close()
-        
-        file = open(path + "u_ref.txt", 'w+')
-        file.write(' '.join(map(str, self.u)) % self.u + '\n')
-        
-        t = Decimal(0.0)
-        print('dt =', self.dt)
-        
-        ### Time loop
-        for nn in range(self.nsteps):
-
-            if  float(t) + self.dt > self.tmax:
-                self.dt = self.tmax - float(t)
-                if self.dt >= 1e-12:
-                    print('Final dt = ', self.dt)
-                    
-            ############## --------------------- ##############
-        
-            u_rk4 = RK4(self.A_adv, 2, self.A_dif, 1, u = self.u, dt = self.dt)[0]
-            self.u = u_rk4.copy()
-            t = Decimal(t) + Decimal(self.dt)
-            
-            ############## --------------------- ##############
-
-            # plt.plot(self.X, u_rk4, 'b.')
-            # plt.pause(self.dt/2)
-            # plt.clf()
-
-            ############## --------------------- ##############
-        
-            ## Write data to files
-            file.write(' '.join(map(str, self.u)) % self.u + '\n')
-            
-            if nn % 200 == 0:
-                print('Time = ', float(t))      
-                print('------------------------------------------------------------')
-             
-        ### Write final data to separate file   
-        file_final = open(path + "Final_data.txt", 'w+')
-        file_final.write(' '.join(map(str, self.u)) % self.u + '\n')
-        file_final.close()
-        file.close()
-        print('Final time = ', t)
-        
     ##############################################################################    
 
     def Solution(self, u, dt):
-    
-        ############## --------------------- ##############
+        """
+        Parameters
+        ----------
+        u           : 1D vector u (input)
+        dt          : dt
+
+        Returns
+        -------
+        u_sol       : 1D vector u (output) after time dt using the preferred method
+        u_ref       : 1D vector u (output) after time dt using the reference method
+        u           : 1D vector u (input)
+        its_mat_vec : Number of matrix-vector products
+
+        """
         
         ## Eigen values (Advection)
         eigen_min_adv = 0
         eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
         eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.125                                        # Safety factor
+        eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
         
         ## c and gamma
         c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
@@ -177,95 +121,87 @@ class Viscous_Burgers_1D_Constant_h:
         
         ############## --------------------- ##############
         
-        ### Matrix-vector function
-        f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
+        ### Solution
+        # u_sol, its_sol = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
         
-        u_temp, its_sol = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)[2:4]
+        ### Reference Data
+        u_sol, its_sol = RK4(self.A_adv, 2, self.A_dif, 1, u, dt)
         
-        # print('Number of matrix vector products in each iteration =', its_sol)
-        
-        ############## --------------------- ##############
-        
-        ## Update u
-        u = u_temp.copy()
-        
-        return u, 2 + its_sol #+ its_power
+        return u_sol, its_sol + its_power
     
     ##############################################################################
     
     def run(self):
         
-        # ### Create directory
-        # path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/C - 100/ETD/dt 0.05/")
-        # os.makedirs(os.path.dirname(path), exist_ok = True)
-        # 
-        # if os.path.exists(path):
-        #     shutil.rmtree(path)                         # remove previous directory with same name
-        # os.makedirs(path, 0o777)                        # create directory with access rights
-        # 
-        # ### Write simulation parameters to a file
-        # file_param = open(path + '/Simulation_Parameters.txt', 'w+')
-        # file_param.write('N = %d' % self.N + '\n')
-        # file_param.write('eta = %f' % self.eta + '\n')
-        # file_param.write('Advection CFL = %.5e' % self.adv_cfl + '\n')
-        # file_param.write('Diffusion CFL = %.5e' % self.dif_cfl + '\n')
-        # file_param.write('Simulation time = %e' % self.tmax + '\n')
-        # file_param.close()
-        # 
-        # ## Create files
-        # file = open(path + "u.txt", 'w+')
-        # 
-        # ## Write initial value of u to files
-        # file.write(' '.join(map(str, self.u)) % self.u + '\n')
+        ### Create directory
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Constant/D - 100/RK4/dt 0.04/")
+        os.makedirs(os.path.dirname(path), exist_ok = True)
         
-        t = Decimal(0.0)                            # Time
+        if os.path.exists(path):
+            shutil.rmtree(path)                         # remove previous directory with same name
+        os.makedirs(path, 0o777)                        # create directory with access rights
+        
+        ### Write simulation parameters to a file
+        file_param = open(path + '/Simulation_Parameters.txt', 'w+')
+        file_param.write('N = %d' % self.N + '\n')
+        file_param.write('eta = %f' % self.eta + '\n')
+        file_param.write('Advection CFL = %.5e' % self.adv_cfl + '\n')
+        file_param.write('Diffusion CFL = %.5e' % self.dif_cfl + '\n')
+        file_param.write('Simulation time = %e' % self.tmax + '\n')
+        file_param.close()
+        
+        ### Create files
+        file = open(path + "u.txt", 'w+')
+        
+        ### Write initial value of u to files
+        file.write(' '.join(map(str, self.u)) % self.u + '\n')
+        
+        time = 0                                            # Time
+        count_mv = 0                                        # Counter for matrix-vector products
         print('Constant dt =', self.dt)
         
-        count_mv = 0
+        ############## --------------------- ##############
         
         ### Time loop
         for nn in range(self.nsteps):
             
-            # print(nn)
-
-            if  float(t) + self.dt > self.tmax:
-                self.dt = self.tmax - float(t)
-                if self.dt >= 1e-12:
-                    print('Final dt = ', self.dt)
+            ############## --------------------- ##############
+            
+            ## Final time step
+            if  time + self.dt > self.tmax:
+                self.dt = self.tmax - time
+                print('Final dt = ', self.dt)
                     
             ############## --------------------- ##############
                  
             u, num_mv = self.Solution(self.u, self.dt)
             
-            t = Decimal(t) + Decimal(self.dt)
+            time = time + self.dt
             self.u = u.copy()
             
             count_mv = count_mv + num_mv
             
-            # print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-            
-            # ### Write data to files
-            # file.write(' '.join(map(str, u)) % u + '\n')
+            ### Write data to files
+            file.write(' '.join(map(str, self.u)) % self.u + '\n')
             
             ############## --------------------- ##############
 
-            ### Test plots
-            plt.plot(self.X, self.u, 'b.')
-            plt.pause(self.dt/2)
-            plt.clf()
+            # ### Test plots
+            # plt.plot(self.X, self.u, 'b.')
+            # plt.pause(self.dt/2)
+            # plt.clf()
             
             ############## --------------------- ##############
         
-        # ### Write final data to separate file   
-        # file_final = open(path + "Final_data.txt", 'w+')
-        # file_final.write(' '.join(map(str, self.u)) % self.u + '\n')
-        # file_final.close()
-        # file.close()
-        # print('Final time = ', t)
+        ### Write final data to separate file   
+        file_final = open(path + "Final_data.txt", 'w+')
+        file_final.write(' '.join(map(str, self.u)) % self.u + '\n')
+        file_final.close()
+        file.close()
         
-        
-        print('Total number of matrix vector products = ', count_mv)
+        print('Final time = ', time)
         print('Total number of time steps =', self.nsteps)
+        print('Total number of matrix vector products = ', count_mv)
         print('-----------------------------------------------------------------------------')
 
 ##############################################################################
@@ -277,9 +213,7 @@ eta = 100
 
 def main():
     sim = Viscous_Burgers_1D_Constant_h(N, t_max, eta)
-    # sim.Reference_Solution()
     sim.run()
-    # plt.show()
 
 if __name__ == "__main__":
     main()

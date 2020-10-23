@@ -16,7 +16,7 @@ import os
 import shutil
 import numpy as np
 from decimal import *
-from Leja_Header import *
+from Leja_Interpolation import *
 import matplotlib.pyplot as plt
 from scipy.sparse import csr_matrix
 from Integrators_1_matrix import *
@@ -58,7 +58,7 @@ class Inviscid_Burgers_1D_Constant_h:
     def initialize_parameters(self):
         self.adv_cfl = self.dx/abs(self.eta)
         print('CFL time: ', self.adv_cfl)
-        self.dt = 0.1 * self.adv_cfl                     # N * CFL condition
+        self.dt = 0.01 * self.adv_cfl                     # N * CFL condition
         self.nsteps = int(np.ceil(self.tmax/self.dt))    # number of time steps
         self.R = 1./6. * self.eta/self.dx    
 
@@ -80,7 +80,7 @@ class Inviscid_Burgers_1D_Constant_h:
     def Reference_Solution(self):
         
         ### Create directory
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Constant/C - 100/RK4/dt 0.1/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Constant/D - 100/EXPRB42/dt 0.01/")
         
         if os.path.exists(path):
             shutil.rmtree(path)                         # remove previous directory with same name
@@ -111,7 +111,8 @@ class Inviscid_Burgers_1D_Constant_h:
                     
             ############## --------------------- ##############
         
-            u_rk4 = RK4(self.A, 2, self.u, self.dt)[0]
+            # u_rk4 = RK4(self.A, 2, self.u, self.dt)[0]
+            u_rk4 = self.Solution(self.u, self.dt)
             self.u = u_rk4.copy()
             t = Decimal(t) + Decimal(self.dt)
             
@@ -142,8 +143,8 @@ class Inviscid_Burgers_1D_Constant_h:
 
     def Solution(self, u, dt):
         
-        ## Leja points
-        Leja_X = Leja_Points()
+        # ## Leja points
+        # Leja_X = Leja_Points()
     
         ############## --------------------- ##############
         
@@ -151,7 +152,7 @@ class Inviscid_Burgers_1D_Constant_h:
         eigen_min_adv = 0
         eigen_max_adv, eigen_imag_adv, its_1 = Power_iteration(self.A, u, 2)       # Max real, imag eigen value
         eigen_max_adv = eigen_max_adv * 1.25                                       # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.125                                    # Safety factor
+        eigen_imag_adv = eigen_imag_adv * 1.25                                    # Safety factor
         
         ## c and gamma
         c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
@@ -162,9 +163,9 @@ class Inviscid_Burgers_1D_Constant_h:
         ############## --------------------- ##############
         
         ### Matrix-vector function
-        f_u = self.A.dot(self.u**2)
+        # f_u = self.A.dot(self.u**2)
         
-        u_temp = EXPRB42(self.A, 2, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)[0]
+        u_temp = EXPRB42(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)[0]
         
         ############## --------------------- ##############
         
@@ -178,7 +179,7 @@ class Inviscid_Burgers_1D_Constant_h:
     def run(self):
         
         ### Create directory
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Constant/C - 100/EXPRB42/dt 0.1/")
+        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Constant/D - 100/EXPRB42/dt 0.1/")
         os.makedirs(os.path.dirname(path), exist_ok = True)
         
         if os.path.exists(path):
@@ -244,7 +245,7 @@ eta = 100
 
 def main():
     sim = Inviscid_Burgers_1D_Constant_h(N, t_max, eta)
-    # sim.Reference_Solution()
+    sim.Reference_Solution()
     # sim.run()
     
 if __name__ == "__main__":

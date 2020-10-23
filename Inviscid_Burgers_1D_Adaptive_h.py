@@ -104,63 +104,52 @@ class Inviscid_Burgers_1D_Adaptive_h:
         Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv)) 
         
         ############## --------------------- ##############
-    
-        ### RHS of PDE (in the form of matrix-vector product)
-        f_u = self.A.dot(u**2)
+
+        ### u_sol, its_sol: Solution and the number of iterations needed to get the solution
+        ### u_ref, its_ref: Reference solution and the number of iterations needed to get that
         
-        ### Change integrator as needed
-        u_sol, its_sol = EXPRB43(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
+        u_sol, its_sol = EXPRB32(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)[0:2]
+
+        u_ref, its_ref = EXPRB42(self.A, 2, u, dt, c_imag_adv, Gamma_imag_adv)
+
+        # u_ref, its_ref = RK4(self.A, 2, u, dt)
         
-        global Ref_integrator, Method_order
-        Ref_integrator = RK4
-        Method_order = 3
+        global Method_order
+        Method_order = 2
 
-        return u_sol, u, 1 + its_sol     
-    
-    ##############################################################################
-    
-    def Traditional_Controller(self, dt):
-        """
-        If dt_used = dt_inp, then dt_new > dt_inp.
-        If dt_used = dt_new, then dt_new < dt_inp.
-        """
-
-        u_sol, u, num_mv_sol = self.Solution(self.u, dt)
-        u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_trad = Higher_Order_Method_1(self.A, 2, self.Solution, Method_order, Ref_integrator, u_sol, u, dt, self.error_tol)
-
-        return u_sol, u_ref, dt_inp, dt_used, dt_new, num_mv_sol, num_mv_trad
+        return u_sol, u_ref, u, its_sol + its_ref
 
     ##############################################################################
 
     def run(self):
         
-        ### Create directory
-        emax = '{:5.1e}'.format(self.error_tol)
-        n_val = '{:3.0f}'.format(self.N)
-        path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB43/3rd order/")
-        path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val))
-        
-        if os.path.exists(path):
-            shutil.rmtree(path)                     # remove previous directory with same name
-        os.makedirs(path, 0o777)                    # create directory with access rights
-        
-        ### Write simulation parameters to a file
-        file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
-        file_param.write('N = %d' % self.N + '\n')
-        file_param.write('eta = %f' % self.eta + '\n')
-        file_param.write('CFL time = %.5e' % self.adv_cfl + '\n')
-        file_param.write('Simulation time = %e' % self.tmax + '\n')
-        file_param.write('Max. error = %e' % self.error_tol)
-        file_param.close()
-        
-        ## Create files
-        file_1 = open(path + "u.txt", 'w+')
-        file_2 = open(path + "u_ref.txt", 'w+')
-        file_3 = open(path + "dt.txt", 'w+')
-        
-        ## Write initial value of u to files
-        file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
-        file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
+        # ### Create directory
+        # emax = '{:5.1e}'.format(self.error_tol)
+        # n_val = '{:3.0f}'.format(self.N)
+        # path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val) + "/Traditional/tol " + str(emax) + "/EXPRB43/3rd order/")
+        # path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Adaptive/C - 50/N_" + str(n_val))
+        # 
+        # if os.path.exists(path):
+        #     shutil.rmtree(path)                     # remove previous directory with same name
+        # os.makedirs(path, 0o777)                    # create directory with access rights
+        # 
+        # ### Write simulation parameters to a file
+        # file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
+        # file_param.write('N = %d' % self.N + '\n')
+        # file_param.write('eta = %f' % self.eta + '\n')
+        # file_param.write('CFL time = %.5e' % self.adv_cfl + '\n')
+        # file_param.write('Simulation time = %e' % self.tmax + '\n')
+        # file_param.write('Max. error = %e' % self.error_tol)
+        # file_param.close()
+        # 
+        # ## Create files
+        # file_1 = open(path + "u.txt", 'w+')
+        # file_2 = open(path + "u_ref.txt", 'w+')
+        # file_3 = open(path + "dt.txt", 'w+')
+        # 
+        # ## Write initial value of u to files
+        # file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+        # file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
         
         time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
@@ -181,8 +170,22 @@ class Inviscid_Burgers_1D_Adaptive_h:
             if counter < 2:
 
                 ### Traditional Controller
-                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_sol, num_mv_trad = self.Traditional_Controller(dt_trad)
+                u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
                 
+                error = np.mean(abs(u_sol - u_ref))
+
+                if error > self.error_tol:
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
+                                                                                            error, u, dt_trad, self.error_tol)
+                
+                else:
+                    dt_used = dt_trad
+                    num_mv_trad = 0
+
+                    ### Estimate of dt for next time step if error < tol in the 1st try
+                    new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
+                    dt_trad = 0.875 * new_dt          # Safety factor
+
                 cost_trad = num_mv_sol + num_mv_trad
                 cost_cont = 0
                 trad_iter = trad_iter + 1
@@ -192,13 +195,12 @@ class Inviscid_Burgers_1D_Adaptive_h:
             ### dt for final time step
             elif time + dt_trad >= self.tmax:
        
-                dt_used = self.tmax - time
+                dt_final = self.tmax - time
                 
                 ### Solution 
-                u_sol, u, num_mv_final = self.Solution(self.u, dt_used)
+                u_sol, u_ref, u, num_mv_final = self.Solution(self.u, dt_final)
                 
-                ### Reference Solution and error
-                u_ref, its_ref_1 = Ref_integrator(self.A, 2, self.u, dt_used)
+                ### Error
                 error = np.mean(abs(u_sol - u_ref))
                 
                 ############## --------------------- ##############
@@ -208,8 +210,8 @@ class Inviscid_Burgers_1D_Adaptive_h:
                     print('Error > tol in the final time step!! Reducing dt.......')
                     
                     ### Traditional controller
-                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_1(self.A, 2, self.Solution, Method_order, \
-                                                                                                Ref_integrator, u_sol, u, dt_used, self.error_tol)
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
+                                                                                            error, u, dt_final, self.error_tol)
                     
                     ## its_ref_1 added in num_mv_trad
                     cost_trad = num_mv_final + num_mv_trad
@@ -217,15 +219,31 @@ class Inviscid_Burgers_1D_Adaptive_h:
                     trad_iter = trad_iter + 1
           
                 else:
-                    cost_cont = cost_trad = num_mv_final       
-                    print('Last time step:', time, dt_used)            
+                    cost_cont = cost_trad = num_mv_final
+                    dt_used = dt_final
+                    print('Last time step:', time, dt_used, time + dt_used)
+                    break          
             
             ############## --------------------- ############## 
             
             else:
                 
                 ### Traditional Controller
-                u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_sol, num_mv_trad = self.Traditional_Controller(dt_trad)
+                u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
+                
+                error = np.mean(abs(u_ref - u_sol))
+                
+                if error > self.error_tol:
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
+                                                                                            error, u, dt_trad, self.error_tol)
+                
+                else:
+                    dt_used = dt_trad
+                    num_mv_trad = 0
+                
+                    ### Estimate of dt for next time step if error < tol in the 1st try
+                    new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
+                    dt_trad = 0.875 * new_dt          # Safety factor
                 
                 cost_trad = num_mv_sol + num_mv_trad
                 cost_cont = 0
@@ -239,42 +257,60 @@ class Inviscid_Burgers_1D_Adaptive_h:
                 # 
                 # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
                 # 
+                # # if dt_trad <= 8e-8:
+                # #     dt_trad = 1.25 * min(self.adv_cfl, self.dif_cfl)
+                # 
                 # dt = min(dt_controller, dt_trad)
+                # 
+                # # print('Initial approx for dt', dt)
                 # 
                 # ############## --------------------- ##############
                 # 
                 # ### Solve with dt
-                # u_sol, u, num_mv_sol = self.Solution(self.u, dt)
+                # u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt)
                 # 
-                # ### Reference Solution and error
-                # u_ref, its_ref_1 = Ref_integrator(self.A, 2, self.u, dt)
+                # ### Error
                 # error = np.mean(abs(u_sol - u_ref))
                 # 
                 # ############## --------------------- ##############
                 # 
-                # if error > self.error_tol or dt == dt_trad:
-                #     
+                # if error > self.error_tol:
+                # 
+                #     # print('Error = ', error)
+                # 
                 #     ### Traditional controller
-                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Higher_Order_Method_1(self.A, 2, self.Solution, Method_order, \
-                #                                                                                 Ref_integrator, u_sol, u, dt, self.error_tol)
-                #     
-                #     ## its_ref_1 added in num_mv_trad
+                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
+                #                                                                             error, u, dt_trad, self.error_tol)
+                # 
                 #     cost_trad = num_mv_sol + num_mv_trad
                 #     cost_cont = 0
                 #     trad_iter = trad_iter + 1
-                #         
+                # 
                 # else:
                 # 
-                #     ### Cost controller
-                #     cost_cont = num_mv_sol + its_ref_1
-                #     cost_trad = 0
-                #     cost_iter = cost_iter + 1
-                #     
+                #     if dt == dt_trad:
+                # 
+                #         ### dt from traditional controller used; error < tolerance
+                #         cost_trad = num_mv_sol
+                #         cost_cont = 0
+                #         trad_iter = trad_iter + 1
+                # 
+                #     elif dt == dt_controller:
+                # 
+                #         ### dt from cost controller used
+                #         cost_cont = num_mv_sol
+                #         cost_trad = 0
+                #         cost_iter = cost_iter + 1
+                # 
+                #     else:
+                # 
+                #         print('Error in selecting dt!! Unknown dt used!!!')
+                # 
+                #     ############## --------------------- ##############
+                # 
                 #     ## dt used in this time step
                 #     dt_used = dt
-                #     
-                #     ############## --------------------- ##############
-                #                   
+                # 
                 #     ### Estimate of dt for next time step using traditional controller ###
                 #     new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
                 #     dt_trad = 0.875 * new_dt          # Safety factor
@@ -292,10 +328,10 @@ class Inviscid_Burgers_1D_Adaptive_h:
             self.dt = dt_used
             time = time + self.dt
 
-            ### Write data to files
-            file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
-            file_2.write(' '.join(map(str, u_ref)) % u_ref + '\n')
-            file_3.write('%.15f' % self.dt + '\n')
+            # ### Write data to files
+            # file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+            # file_2.write(' '.join(map(str, u_ref)) % u_ref + '\n')
+            # file_3.write('%.15f' % self.dt + '\n')
             
             ############## --------------------- ##############
 
@@ -316,40 +352,47 @@ class Inviscid_Burgers_1D_Adaptive_h:
 
         ############## --------------------- ##############
         
-        ### Write simulation results to file
-        file_res = open(path + 'Results.txt', 'w+')
-        file_res.write('Number of time steps = %d' % counter + '\n')
-        file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
-        file_res.write('Cost controller used in %d' % cost_iter + ' time steps')
-        file_res.close()
+        # ### Write simulation results to file
+        # file_res = open(path + 'Results.txt', 'w+')
+        # file_res.write('Number of time steps = %d' % counter + '\n')
+        # file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
+        # file_res.write('Cost controller used in %d' % cost_iter + ' time steps')
+        # file_res.close()
+        # 
+        # ### Close files
+        # file_1.close()
+        # file_2.close()
+        # file_3.close()
         
-        ### Close files
-        file_1.close()
-        file_2.close()
-        file_3.close()
+        x_cnt = np.arange(0, counter, 1)
+        advCFL = np.ones(counter) * self.adv_cfl
+
+        plt.loglog(x_cnt, dt_temp, 'b')
+        plt.loglog(x_cnt, advCFL, 'r')
         
         
 ##############################################################################
 
 error_list_1 = [1e-4, 1e-5, 1e-6, 1e-7, 5e-5, 5e-6, 5e-7, 5e-8]
-# error_list_3 = [1e-4]
+error_list_2 = [1e-7]
 
 ## Assign values for N, tmax, tol, and eta
-for ii in error_list_1:
+for ii in error_list_2:
 
     loopTime = datetime.now()
 
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
-    N = 100
+    N = 300
     t_max = 5e-2
-    eta = 50
+    eta = 10
     error_tol = ii
 
     def main():
         sim = Inviscid_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)
         sim.run()
+        plt.show()
 
     if __name__ == "__main__":
         main()

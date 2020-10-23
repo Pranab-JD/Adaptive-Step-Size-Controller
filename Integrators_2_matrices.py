@@ -290,7 +290,7 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     
     a_n_f, its_a = imag_Leja_phi(u, f_u, 3*dt/4, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
     
-    a_n = u + a_n_f * 3*dt/4
+    a_n = u + (a_n_f * 3*dt/4)
     
     ############## --------------------- ##############
     
@@ -311,17 +311,17 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
 ##############################################################################
 
-def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
+def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c1, Gamma1, c2, Gamma2):
     """
     Parameters
     ----------
-    A_adv   : Advection matrix (A)
-    m_adv   : Index of u (u^m_adv); advection
-    A_dif   : Diffusion matrix (A)
-    m_dif   : Index of u (u^m_dif); diffusion
-    u       : 1D vector u (Input)
-    dt      : dt
-    c, Gamma: Parameters for Leja extrapolation
+    A_adv       : Advection matrix (A)
+    m_adv       : Index of u (u^m_adv); advection
+    A_dif       : Diffusion matrix (A)
+    m_dif       : Index of u (u^m_dif); diffusion
+    u           : 1D vector u (Input)
+    dt          : dt
+    c, Gamma    : Parameters for Leja extrapolation
 
     Returns
     -------
@@ -331,10 +331,8 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     """
     
     epsilon = 1e-7
-    
-    ############## --------------------- ##############
-    
-    ### Matrix-vector function
+
+    ### RHS of PDE at u
     f_u = A_adv.dot(u**m_adv) + A_dif.dot(u**m_dif)
 
     ### J(u) * u
@@ -345,11 +343,19 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     
     ############## --------------------- ##############
     
-    a_n_f, its_a = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
-    a_n = u + a_n_f * dt
+    ### 2nd order solution
+
+    a_n_f, its_a = real_Leja_phi(u, f_u, dt, c1, Gamma1, phi_1, A_adv, m_adv, A_dif, m_dif)
+    a_n = u + (a_n_f * dt)
+
+    u_exprb2 = a_n
+
+
+    print('Value of whole func', np.mean(abs(f_u)), np.min(abs(f_u)))
+    print('dt =', dt)
 
     ############## --------------------- ##############
-    
+
     ### J(u) * a
     Linear_a = (A_adv.dot((u + (epsilon * a_n))**m_adv) + A_dif.dot((u + (epsilon * a_n))**m_dif) - f_u)/epsilon
     
@@ -358,16 +364,22 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     
     ############## --------------------- ##############
     
-    u_nl_3, its_3 = imag_Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
+    ### 3rd order solution
+
+    func_3 = (Nonlin_a - Nonlin_u)
+    u_3, its_3 = real_Leja_phi(u, func_3, dt, c1, Gamma1, phi_3, A_adv, m_adv, A_dif, m_dif)
+
+    print('Value of nonlinear func', np.mean(abs(func_3)), np.min(abs(func_3)))
+
+    u_exprb3 = u_exprb2 + (u_3 *2* dt)
+
+    if np.mean(abs(func_3)) > np.mean(abs(f_u)):
+        u_exprb2 = u
+        u_exprb3 = 3*u
     
-    u_exprb3 = u + (a_n_f * dt) + (u_nl_3 * 2 * dt)
-    
-    return a_n, its_a, u_exprb3, its_3
-    
+    return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a + its_3
+
 ##############################################################################
-    
-    
-### EXPRB43
 
 def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     """
@@ -380,12 +392,10 @@ def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     u       : 1D vector u (Input)
     dt      : dt
     c, Gamma: Parameters for Leja extrapolation
-
     Returns
     -------
     u_exprb43   : 1D vector u (output) after time dt (3rd and 4th order)
     mat_vec_num : # of matrix-vector products
-
     """
     
     epsilon = 1e-7
@@ -425,14 +435,11 @@ def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     
     ############# --------------------- ##############
     
-    u_1 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)[0]
+    u_1 = b_n_f
     u_nl_3, its_3 = imag_Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
     u_nl_4, its_4 = imag_Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_adv, m_adv, A_dif, m_dif)
     
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
-    u_exprb4 = u + (u_1 * dt) + (u_nl_3 * dt) + (u_nl_4 * dt)
+    u_exprb4 = u_exprb3 + (u_nl_4 * dt)
      
     return u_exprb3, 12 + its_a + its_b + its_3, u_exprb4, 12 + its_a + its_b + its_3 + its_4
-
-
-##############################################################################

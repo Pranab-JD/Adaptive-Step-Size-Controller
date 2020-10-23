@@ -250,6 +250,8 @@ def Trad_Controller(Method, p, error, u, dt_inp, tol):
 
     for mm in range(n_iters):
 
+        print('Step size Rejected!!!')
+
         ### Step size controller ###
         new_dt = dt * (tol/error)**(1/(p + 1))
         dt = 0.875 * new_dt          # Safety factor
@@ -265,6 +267,8 @@ def Trad_Controller(Method, p, error, u, dt_inp, tol):
             # print('Error within limits. dt accepted!! Error = ', error)
             dt_used = dt
             dt_new = dt
+            print('Step size accepted')
+            print('----------------------------------------------------------------------------------------')
             break
 
         ## Error alert

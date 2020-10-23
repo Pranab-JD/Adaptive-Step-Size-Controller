@@ -18,8 +18,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Leja_Interpolation import *
 from Adaptive_Step_Size import *
-from Integrators_2_matrices import *
 from scipy.sparse import csr_matrix
+from Integrators_2_matrices import *
 
 from datetime import datetime
 
