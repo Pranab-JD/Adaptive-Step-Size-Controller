@@ -350,9 +350,16 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c1, Gamma1, c2, Gamma2):
 
     u_exprb2 = a_n
 
+    # if a_n_f.all() == 0:
+    #     ## 2nd order solution diverges
+    #     u_exprb2 = u
+    #     u_exprb3 = 0*u
+    #     print('1st term diverges')
+
+    #     return u_exprb2, 2 + its_a, u_exprb3, 2 + its_a
+
 
     print('Value of whole func', np.mean(abs(f_u)), np.min(abs(f_u)))
-    print('dt =', dt)
 
     ############## --------------------- ##############
 
@@ -367,15 +374,18 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c1, Gamma1, c2, Gamma2):
     ### 3rd order solution
 
     func_3 = (Nonlin_a - Nonlin_u)
-    u_3, its_3 = real_Leja_phi(u, func_3, dt, c1, Gamma1, phi_3, A_adv, m_adv, A_dif, m_dif)
-
     print('Value of nonlinear func', np.mean(abs(func_3)), np.min(abs(func_3)))
 
-    u_exprb3 = u_exprb2 + (u_3 *2* dt)
-
     if np.mean(abs(func_3)) > np.mean(abs(f_u)):
+        # Nonlinear remainder has to to be smaller than the linear part
         u_exprb2 = u
-        u_exprb3 = 3*u
+        u_exprb3 = u + (0.01 * u)
+
+        return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a
+
+    u_3, its_3 = real_Leja_phi(u, func_3, dt, c1, Gamma1, phi_3, A_adv, m_adv, A_dif, m_dif)
+
+    u_exprb3 = u_exprb2 + (u_3 *2* dt)
     
     return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a + its_3
 

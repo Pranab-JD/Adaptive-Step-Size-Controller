@@ -1,25 +1,20 @@
 """
-Created on Thu Aug  6 17:29:51 2020
+Created on Mon Oct 26 18:24:14 2020
 
 @author: Pranab JD
 
-Description: -
-    This code solves the viscous Burgers' equation:
-    du/dt = d^2u/dx^2 + eta * d(u^2)/dx (1D)
-    using different exponential time integrators.
-    Advective term - 3rd order upwind scheme
-    Adaptive step size is implemented.
-
+Description: 
+    Runs the code using designated integrators
+    and step size controllers for the  different
+    equations under consideration.
 """
 
 import os
 import shutil
 import numpy as np
-import matplotlib.pyplot as plt
-from Leja_Interpolation import *
+from Porous_Medium_1D import *
 from Adaptive_Step_Size import *
-from Integrators_2_matrices import *
-from scipy.sparse import csr_matrix
+import matplotlib.pyplot as plt
 
 from datetime import datetime
 
@@ -27,126 +22,15 @@ startTime = datetime.now()
 
 ##############################################################################
 
-class Viscous_Burgers_1D_Adaptive_h:
+System_1 = Porous_Medium_1D
+System_2 = Inviscid_Burgers_1D
+System_3 = Viscous_Burgers_1D
+System_4 = Diffusion_Advection_1D
 
-    def __init__(self, N, tmax, eta, error_tol):
-        self.N = int(N)                 # Number of points along X
-        self.xmin = 0                   # Min value of X
-        self.xmax = 1                   # Max value of X
-        self.tmax = tmax                # Maximum time
-        self.error_tol = error_tol      # Maximum error permitted
-        self.eta = eta                  # Peclet number
-        self.sigma = 0.02          		# Amplitude of Gaussian
-        self.x_0 = 0.9           		# Center of the Gaussian
-        self.initialize_spatial_domain()
-        self.initialize_U()
-        self.initialize_parameters()
-        self.initialize_matrices()
-
-	### Discretize the spatial domain
-    def initialize_spatial_domain(self):
-        self.dx = (self.xmax - self.xmin)/(self.N)
-        self.X = np.linspace(self.xmin, self.xmax, self.N, endpoint = False)
-
-	### Initial distribution
-    def initialize_U(self):
-        u0 = 1 + (np.exp(1 - (1/(1 - (2 * self.X - 1)**2)))) + 1./2. * np.exp(-(self.X - self.x_0)**2/(2 * self.sigma**2))
-        self.u = u0.copy()
-
-    ### Parameters
-    def initialize_parameters(self):
-        self.adv_cfl = self.dx/self.eta
-        self.dif_cfl = self.dx**2/2
-        print('Advection CFL: ', self.adv_cfl)
-        print('Diffusion CFL: ', self.dif_cfl)
-        print('Tolerance:', self.error_tol)
-        self.dt = 1.4 * min(self.adv_cfl, self.dif_cfl)  # N * CFL condition
-        self.R = 1./6. * self.eta/self.dx
-        self.F = 1/self.dx**2                            # Fourier mesh number
-
-    ### Operator matrices
-    def initialize_matrices(self):
-        self.A_adv = np.zeros((self.N, self.N))
-        self.A_dif = np.zeros((self.N, self.N))
-
-        ## Factor of 1/2 - conservative Burger's equation
-        for ij in range(self.N):
-            self.A_adv[ij, int(ij + 2) % self.N] = - self.R/2
-            self.A_adv[ij, int(ij + 1) % self.N] = 6 * self.R/2
-            self.A_adv[ij, ij % self.N] = -3 * self.R/2
-            self.A_adv[ij, int(ij - 1) % self.N] = -2 * self.R/2
-
-            self.A_dif[ij, int(ij + 1) % self.N] = self.F
-            self.A_dif[ij, ij % self.N] = -2 * self.F
-            self.A_dif[ij, int(ij - 1) % self.N] = self.F
-
-        self.A_adv = csr_matrix(self.A_adv)
-        self.A_dif = csr_matrix(self.A_dif)
-
-        ## Eigen values (Diffusion)
-        global eigen_min_dif, eigen_max_dif, eigen_imag_dif, c_real_dif, Gamma_real_dif
-        eigen_min_dif = 0
-        eigen_max_dif, eigen_imag_dif = Gershgorin(self.A_dif)      # Max real, imag eigen value
-        c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
-        Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
-
-    ##############################################################################
-
-    def Solution(self, u, dt):
-        """
-        Parameters
-        ----------
-        u           : 1D vector u (input)
-        dt          : dt
-
-        Returns
-        -------
-        u_sol       : 1D vector u (output) after time dt using the preferred method
-        u_ref       : 1D vector u (output) after time dt using the reference method
-        u           : 1D vector u (input)
-        its_mat_vec : Number of matrix-vector products
-
-        """
-
-        ## Eigen values (Advection)
-        eigen_min_adv = 0
-        eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
-        eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
-
-        ## c and gamma
-        c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
-        Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
-        c_imag_adv = 0
-        Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
-
-        ############## --------------------- ##############
-
-        ### u_sol, its_sol: Solution and the number of iterations needed to get the solution
-        ### u_ref, its_ref: Reference solution and the number of iterations needed to get that
-        
-        # c, Gamma = c_real_dif, Gamma_real_dif
-        # c, Gamma = c_real_adv, Gamma_real_adv
-        # c, Gamma = c_imag_adv, Gamma_imag_adv
-
-        u_sol, its_sol= EXPRB32(self.A_adv, 2, self.A_dif, 1, u, dt, c_real_dif, Gamma_real_dif, c_imag_adv, Gamma_imag_adv)[0:2]
-        
-        u_ref, its_ref = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
-
-        # u_ref, its_ref = RK4(self.A_adv, 2, self.A_dif, 1, u, dt)
-
-        global Method_order
-        Method_order = 2
-
-        ## No. of matrix-vector products
-        its_mat_vec = its_sol + its_ref + its_power
-
-        return u_sol, u_ref, u, its_mat_vec
-
-    ##############################################################################
-
+class Run_Cost_Controller(System_1):
+    
     def run(self):
-
+    
         # ### Create directory
         # emax = '{:5.1e}'.format(self.error_tol)
         # n_val = '{:3.0f}'.format(self.N)
@@ -185,6 +69,7 @@ class Viscous_Burgers_1D_Adaptive_h:
         cost_iter = 0
         trad_iter = 0
         dt_trad = self.dt
+        Method_order = 2
 
         ############## --------------------- ##############
 
@@ -415,7 +300,7 @@ class Viscous_Burgers_1D_Adaptive_h:
 ##############################################################################
 
 error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8]
-error_list_2 = [1e-7]
+error_list_2 = [1e-5]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_2:
@@ -427,11 +312,11 @@ for ii in error_list_2:
 
     N = 500
     t_max = 1e-3
-    eta = 10
+    eta = 100
     error_tol = ii
 
     def main():
-        sim = Viscous_Burgers_1D_Adaptive_h(N, t_max, eta, error_tol)
+        sim = Run_Cost_Controller(N, t_max, eta, error_tol)
         sim.run()
         plt.show()
 

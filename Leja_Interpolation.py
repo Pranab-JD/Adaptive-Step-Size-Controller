@@ -12,16 +12,16 @@ import numpy as np
 ################################################################################################
 
 def phi_1(z):
-    return ((np.exp(z) - 1)/z)
+    return (np.exp(z) - 1)/z
 
 def phi_2(z):
-    return ((np.exp(z) - z - 1)/z**2)
+    return (np.exp(z) - z - 1)/z**2
 
 def phi_3(z):
-    return ((np.exp(z) - z**2/2 - z - 1)/z**3)
+    return (np.exp(z) - z**2/2 - z - 1)/z**3
 
 def phi_4(z):
-    return ((np.exp(z) - z**3/6 - z**2/2 - z - 1)/z**4)
+    return (np.exp(z) - z**3/6 - z**2/2 - z - 1)/z**4
 
 ################################################################################################
 
@@ -48,7 +48,7 @@ def Divided_Difference(X, func):
 
     div_diff = func(X)
 
-    for ii in range(1, int(len(X)/10)):
+    for ii in range(1, int(len(X)/2)):
         for jj in range(ii):
             
             div_diff[ii] = (div_diff[ii] - div_diff[jj])/(X[ii] - X[jj])
@@ -321,7 +321,7 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
         if phi_func == phi_1:
         
             for ii in range(len(zz)):
-                if abs(zz[ii]) <= 1e-6:
+                if zz[ii] <= 1e-7:
                     var[ii] = 1 + zz[ii] * (1./2. + zz[ii] * (1./6. + zz[ii] * (1./24. + 1./120.*zz[ii])))
         
         elif phi_func == phi_2:
@@ -333,13 +333,13 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
         elif phi_func == phi_3:
         
             for ii in range(len(zz)):
-                if abs(zz[ii]) <= 1e-5:
+                if zz[ii] <= 1e-5:
                     var[ii] = 1./6. + zz[ii] * (1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + 1./5040.*zz[ii])))
                     
         elif phi_func == phi_4:
         
             for ii in range(len(zz)):
-                if abs(zz[ii]) <= 1e-4:
+                if zz[ii] <= 1e-4:
                     var[ii] = 1./24. + zz[ii] * (1./120. + zz[ii] * (1./720. + zz[ii] * (1./5040. + 1./40320.*zz[ii])))
         
         else:
@@ -351,7 +351,16 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
 
     Leja_X = Leja_Points()                          # Leja Points
     coeffs = Divided_Difference(Leja_X, func)       # Polynomial Coefficients
-    
+
+    # for jj in range(len(coeffs)):
+
+    #     if coeffs[jj] > 100:
+    #         print('Coeffs = ', coeffs[jj], jj)
+
+            # """
+            #     Go back to traditional controller to reduce dt
+            # """
+
     ## Define matrices
     if len(A) == 2:
         A_adv = A[0]; m_adv = A[1]
@@ -369,7 +378,7 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
 
     ## a_1, a_2 .... a_n terms
     y = nonlin_matrix_vector.copy()
-    max_Leja_pts = 50
+    max_Leja_pts = 250
     poly_vals = np.zeros(max_Leja_pts)
     poly_tol = 1e-4 * np.mean(abs(nonlin_matrix_vector))
     # print(np.min(abs(nonlin_matrix_vector)))
@@ -397,17 +406,23 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
         
         poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
         
-        if poly_vals[ii] > 1e10:
-            print(poly_vals[ii], coeffs[ii])
+        # if poly_vals[ii] > 1e2:
+
+        #     # Diverges from 1st term (dt too large)
+        #     print('Coeffs = ', poly_vals[ii], coeffs[ii])
             
-            print('Returning same value of u...........')
-            # poly = u
+        #     print('Returning same value of u...........')
+        #     # poly = u
             
-            # return u_real, ii * len(A)
-            poly_vals = poly_vals * 0
-            break
+        #     # return u_real, ii * len(A)
+        #     # poly_vals = poly_vals * 0
+        #     # y_val = y_val * 0
+
+        #     u_real = u * 0 #poly.copy()    # 1st term only (a_0)
+
+        #     return u_real, ii * len(A)
         
-        # print(poly_vals[ii])
+        # print('Coeffs = ', poly_vals[ii], coeffs[ii])
         
         ## If new number (next order) to be added < tol, ignore it
         if  poly_vals[ii] < poly_tol:
@@ -430,7 +445,7 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
     ### ------------------------------------------------------------------- ###
             
     ### Choose polynomial terms up to the smallest term, ignore the rest
-    if poly_vals[1] == 0 and poly_vals[2] == 0 and poly_vals[3] == 0:        # poly_vals[1] = 0, no more terms needed
+    if poly_vals[1] == 0:        # poly_vals[1] = 0, no more terms needed
         min_poly_val_x = 0   
     
     elif np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
@@ -444,7 +459,7 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
         poly = poly + y_val[jj, :]    
 
     ## Solution
-    u_real = poly.copy()
+    u_real = poly.copy()                    # du/dt
 
     return u_real, ii * len(A)
 
