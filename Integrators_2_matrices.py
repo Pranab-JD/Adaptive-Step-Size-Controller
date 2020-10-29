@@ -311,7 +311,7 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
 ##############################################################################
 
-def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c1, Gamma1, c2, Gamma2):
+def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
     """
     Parameters
     ----------
@@ -330,6 +330,14 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c1, Gamma1, c2, Gamma2):
 
     """
     
+    ## Use either Real Leja or imaginary Leja
+    if Real_Imag_Leja == 0:
+        Leja_phi = real_Leja_phi
+    elif Real_Imag_Leja == 1:
+        Leja_phi = imag_Leja_phi
+    else:
+        print('Error in choosing Real/Imag Leja!!')
+        
     epsilon = 1e-7
 
     ### RHS of PDE at u
@@ -343,23 +351,12 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c1, Gamma1, c2, Gamma2):
     
     ############## --------------------- ##############
     
-    ### 2nd order solution
+    ### Internal stage 1 and 2nd order solution
 
-    a_n_f, its_a = real_Leja_phi(u, f_u, dt, c1, Gamma1, phi_1, A_adv, m_adv, A_dif, m_dif)
+    a_n_f, its_a = Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
     a_n = u + (a_n_f * dt)
 
     u_exprb2 = a_n
-
-    # if a_n_f.all() == 0:
-    #     ## 2nd order solution diverges
-    #     u_exprb2 = u
-    #     u_exprb3 = 0*u
-    #     print('1st term diverges')
-
-    #     return u_exprb2, 2 + its_a, u_exprb3, 2 + its_a
-
-
-    print('Value of whole func', np.mean(abs(f_u)), np.min(abs(f_u)))
 
     ############## --------------------- ##############
 
@@ -373,40 +370,38 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c1, Gamma1, c2, Gamma2):
     
     ### 3rd order solution
 
-    func_3 = (Nonlin_a - Nonlin_u)
-    print('Value of nonlinear func', np.mean(abs(func_3)), np.min(abs(func_3)))
+    u_3, its_3 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
 
-    if np.mean(abs(func_3)) > np.mean(abs(f_u)):
-        # Nonlinear remainder has to to be smaller than the linear part
-        u_exprb2 = u
-        u_exprb3 = u + (0.01 * u)
-
-        return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a
-
-    u_3, its_3 = real_Leja_phi(u, func_3, dt, c1, Gamma1, phi_3, A_adv, m_adv, A_dif, m_dif)
-
-    u_exprb3 = u_exprb2 + (u_3 *2* dt)
+    u_exprb3 = u_exprb2 + (u_3 * 2 * dt)
     
     return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a + its_3
 
 ##############################################################################
 
-def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
+def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
     """
     Parameters
     ----------
-    A_adv   : Advection matrix (A)
-    m_adv   : Index of u (u^m_adv); advection
-    A_dif   : Diffusion matrix (A)
-    m_dif   : Index of u (u^m_dif); diffusion
-    u       : 1D vector u (Input)
-    dt      : dt
-    c, Gamma: Parameters for Leja extrapolation
+    A_adv       : Advection matrix (A)
+    m_adv       : Index of u (u^m_adv); advection
+    A_dif       : Diffusion matrix (A)
+    m_dif       : Index of u (u^m_dif); diffusion
+    u           : 1D vector u (Input)
+    dt          : dt
+    c, Gamma    : Parameters for Leja extrapolation
     Returns
     -------
     u_exprb43   : 1D vector u (output) after time dt (3rd and 4th order)
     mat_vec_num : # of matrix-vector products
     """
+
+    ## Use either Real Leja or imaginary Leja
+    if Real_Imag_Leja == 0:
+        Leja_phi = real_Leja_phi
+    elif Real_Imag_Leja == 1:
+        Leja_phi = imag_Leja_phi
+    else:
+        print('Error in choosing Real/Imag Leja!!')
     
     epsilon = 1e-7
         
@@ -420,36 +415,55 @@ def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     Nonlin_u = f_u - Linear_u
     
     ############## --------------------- ##############
-    
-    a_n_f, its_a = imag_Leja_phi(u, f_u, dt/2, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
-    b_n_f, its_b = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
-    
+
+    ### Internal stage 1
+    a_n_f, its_a = Leja_phi(u, f_u, dt/2, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
     a_n = u + a_n_f * dt/2
-    b_n = u + b_n_f * dt
-    
-    ############# --------------------- ##############
-    
+
     ### J(u) * a
     Linear_a = (A_adv.dot((u + (epsilon * a_n))**m_adv) + A_dif.dot((u + (epsilon * a_n))**m_dif) - f_u)/epsilon
     
     ### F(a) = f(a) - (J(u) * a)
     Nonlin_a = A_adv.dot(a_n**m_adv) + A_dif.dot(a_n**m_dif) - Linear_a
-    
-    ############## --------------------- ##############
+
+    ############# --------------------- ##############
+
+    ### Internal stage 2
+    b_n_f, its_b_1 = Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+    b_n_nl, its_b_2 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+       
+    b_n = u + (b_n_f * dt) + (b_n_nl * dt)
     
     ### J(u) * b
     Linear_b = (A_adv.dot((u + (epsilon * b_n))**m_adv) + A_dif.dot((u + (epsilon * b_n))**m_dif) - f_u)/epsilon
     
     ### F(b) = f(b) - (J(u) * b)
     Nonlin_b = A_adv.dot(b_n**m_adv) + A_dif.dot(b_n**m_dif) - Linear_b
+
+    # print('f(u) =', np.mean(abs(f_u)))
+    # print('F(a) - F(u) =', np.mean(abs(Nonlin_a - Nonlin_u)))
+    # print('-14F(u) + 16F(a) - 2F(b) =', np.mean(abs(-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b)))
+    # print('36F(u) - 48F(a) + 12F(b) =', np.mean(abs(36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b)))
     
-    ############# --------------------- ##############
+    # ############# --------------------- ##############
+
+    # if np.mean(abs(Nonlin_a - Nonlin_u)) > np.mean(abs(f_u)) or \
+    #     np.mean(abs(-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b)) > np.mean(abs(f_u)) or \
+    #     np.mean(abs(36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b)) > np.mean(abs(f_u)):
+
+    #     # Nonlinear remainder has to to be smaller than the linear part
+    #     u_exprb3 = u
+    #     u_exprb4 = u + (0.01 * u)
+
+    #     return u_exprb3, 12 + its_a + its_b_1 + its_b_2, u_exprb4, 12 + its_a + its_b_1 + its_b_2
     
     u_1 = b_n_f
-    u_nl_3, its_3 = imag_Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
-    u_nl_4, its_4 = imag_Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_adv, m_adv, A_dif, m_dif)
+    u_nl_3, its_3 = Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
+    u_nl_4, its_4 = Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_adv, m_adv, A_dif, m_dif)
     
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u_exprb3 + (u_nl_4 * dt)
      
-    return u_exprb3, 12 + its_a + its_b + its_3, u_exprb4, 12 + its_a + its_b + its_3 + its_4
+    return u_exprb3, 12 + its_a + its_b_1 + its_b_2 + its_3, u_exprb4, 12 + its_a + its_b_1 + its_b_2 + its_3 + its_4
+
+##############################################################################

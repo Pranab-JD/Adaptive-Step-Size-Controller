@@ -3,7 +3,7 @@ Created on Mon Oct 26 18:24:14 2020
 
 @author: Pranab JD
 
-Description: 
+Description:
     Runs the code using designated integrators
     and step size controllers for the  different
     equations under consideration.
@@ -13,6 +13,9 @@ import os
 import shutil
 import numpy as np
 from Porous_Medium_1D import *
+from Viscous_Burgers_1D import *
+from Inviscid_Burgers_1D import *
+from Diffusion_Advection_1D import *
 from Adaptive_Step_Size import *
 import matplotlib.pyplot as plt
 
@@ -23,14 +26,14 @@ startTime = datetime.now()
 ##############################################################################
 
 System_1 = Porous_Medium_1D
-System_2 = Inviscid_Burgers_1D
-System_3 = Viscous_Burgers_1D
+System_2 = Viscous_Burgers_1D
+System_3 = Inviscid_Burgers_1D
 System_4 = Diffusion_Advection_1D
 
-class Run_Cost_Controller(System_1):
-    
-    def run(self):
-    
+class Run_Cost_Controller(System_2):
+
+    def run_adaptive_h(self):
+
         # ### Create directory
         # emax = '{:5.1e}'.format(self.error_tol)
         # n_val = '{:3.0f}'.format(self.N)
@@ -77,7 +80,7 @@ class Run_Cost_Controller(System_1):
         while (time < self.tmax):
 
             print('Counter =', counter)
-            
+
             if counter < 2:
 
                 ### Traditional Controller
@@ -139,30 +142,28 @@ class Run_Cost_Controller(System_1):
 
                 ### Traditional Controller
                 u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
-                
-                # print('dt initial', dt_trad)
-                
+
                 error = np.mean(abs(u_ref - u_sol))
-                
+
                 if error > self.error_tol:
                     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
                                                                                             error, u, dt_trad, self.error_tol)
-                
+
                 else:
                     dt_used = dt_trad
                     num_mv_trad = 0
-                    
-                    print('Step size accepted')
-                    print('----------------------------------------------------------------------------------------')
-                
+
+                    # print('Step size accepted')
+                    # print('----------------------------------------------------------------------------------------')
+
                     ### Estimate of dt for next time step if error < tol in the 1st try
                     new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
                     dt_trad = 0.875 * new_dt          # Safety factor
-                
+
                 cost_trad = num_mv_sol + num_mv_trad
                 cost_cont = 0
                 trad_iter = trad_iter + 1
-                
+
                 # print('dt used', dt_used)
 
                 ############## --------------------- ##############
@@ -170,63 +171,63 @@ class Run_Cost_Controller(System_1):
                 # ### Cost controller
                 # mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
                 # dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
-                # 
+                #
                 # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
-                # 
+                #
                 # # if dt_trad <= 8e-8:
                 # #     dt_trad = 1.25 * min(self.adv_cfl, self.dif_cfl)
-                # 
+                #
                 # dt = min(dt_controller, dt_trad)
-                # 
+                #
                 # # print('Initial approx for dt', dt)
-                # 
+                #
                 # ############## --------------------- ##############
-                # 
+                #
                 # ### Solve with dt
                 # u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt)
-                # 
+                #
                 # ### Error
                 # error = np.mean(abs(u_sol - u_ref))
-                # 
+                #
                 # ############## --------------------- ##############
-                # 
+                #
                 # if error > self.error_tol:
-                # 
+                #
                 #     # print('Error = ', error)
-                # 
+                #
                 #     ### Traditional controller
                 #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
                 #                                                                             error, u, dt_trad, self.error_tol)
-                # 
+                #
                 #     cost_trad = num_mv_sol + num_mv_trad
                 #     cost_cont = 0
                 #     trad_iter = trad_iter + 1
-                # 
+                #
                 # else:
-                # 
+                #
                 #     if dt == dt_trad:
-                # 
+                #
                 #         ### dt from traditional controller used; error < tolerance
                 #         cost_trad = num_mv_sol
                 #         cost_cont = 0
                 #         trad_iter = trad_iter + 1
-                # 
+                #
                 #     elif dt == dt_controller:
-                # 
+                #
                 #         ### dt from cost controller used
                 #         cost_cont = num_mv_sol
                 #         cost_trad = 0
                 #         cost_iter = cost_iter + 1
-                # 
+                #
                 #     else:
-                # 
+                #
                 #         print('Error in selecting dt!! Unknown dt used!!!')
-                # 
+                #
                 #     ############## --------------------- ##############
-                # 
+                #
                 #     ## dt used in this time step
                 #     dt_used = dt
-                # 
+                #
                 #     ### Estimate of dt for next time step using traditional controller ###
                 #     new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
                 #     dt_trad = 0.875 * new_dt          # Safety factor
@@ -245,11 +246,11 @@ class Run_Cost_Controller(System_1):
             self.u = u_ref.copy()
             self.dt = dt_used
             time = time + self.dt
-            
+
             error = np.mean(abs(u_ref - u_sol))
-            print('Error incurred = ', error)
-            print('dt = ', self.dt, dt_trad)
-            print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            # print('Error incurred = ', error)
+            # print('dt = ', self.dt, dt_trad)
+            # print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
 
             ############# --------------------- ##############
 
@@ -264,7 +265,7 @@ class Run_Cost_Controller(System_1):
             plt.plot(self.X, u_ref, 'rd', label = 'Reference')
             plt.plot(self.X, u_sol, 'b.', label = 'Data')
             plt.legend()
-            plt.pause(self.dt/4)
+            plt.pause(self.dt/2)
             plt.clf()
 
             ############## --------------------- ##############
@@ -293,14 +294,64 @@ class Run_Cost_Controller(System_1):
         advCFL = np.ones(counter) * self.adv_cfl
         difCFL = np.ones(counter) * self.dif_cfl
 
+        plt.figure()
         plt.loglog(x_cnt, dt_temp, 'b')
         plt.loglog(x_cnt, advCFL, 'r')
         plt.loglog(x_cnt, difCFL, 'g')
 
+    ##############################################################################
+    ##############################################################################
+
+    def run_constant_h(self):
+
+        time = 0                                    # Time
+        counter = 0                                 # Counter for # of time steps
+        count_mv = 0                                # Counter for matrix-vector products
+
+        ############## --------------------- ##############
+
+        ### Time loop ###
+        while (time < self.tmax):
+
+            if time + self.dt > self.tmax:
+
+                if self.tmax - time >= 1e10:
+                    self.dt = self.tmax - time
+                    print('Final step size:', self.dt)
+
+                else:
+                    print('Final step size:', self.dt)
+
+
+            u_sol, u, num_mv_sol = self.Solution(self.u, self.dt)
+
+            ### Update variables
+            count_mv = count_mv + num_mv_sol
+            counter = counter + 1
+
+            self.u = u_sol.copy()
+            time = time + self.dt
+
+            ############# --------------------- ##############
+
+            ## Test plots
+            # plt.plot(self.X, u_sol, 'b.', label = 'Data')
+            # plt.legend()
+            # plt.pause(self.dt/4)
+            # plt.clf()
+
+            ############## --------------------- ##############
+
+        print('Number of time steps = ', counter)
+        print('Total number of matrix-vector products = ', count_mv)
+
+        plt.plot(self.X, self.u, 'b.', label = 'Data')
+
+
 ##############################################################################
 
-error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8]
-error_list_2 = [1e-5]
+error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8, 1e-8]
+error_list_2 = [1e-7]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_2:
@@ -310,14 +361,15 @@ for ii in error_list_2:
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
-    N = 500
-    t_max = 1e-3
-    eta = 100
+    N = 700
+    t_max = 5e-4
+    eta = 10
     error_tol = ii
 
     def main():
         sim = Run_Cost_Controller(N, t_max, eta, error_tol)
-        sim.run()
+        sim.run_adaptive_h()
+        # sim.run_constant_h()
         plt.show()
 
     if __name__ == "__main__":

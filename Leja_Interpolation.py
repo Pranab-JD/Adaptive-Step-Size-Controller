@@ -48,7 +48,7 @@ def Divided_Difference(X, func):
 
     div_diff = func(X)
 
-    for ii in range(1, int(len(X)/2)):
+    for ii in range(1, int(len(X)/5)):
         for jj in range(ii):
             
             div_diff[ii] = (div_diff[ii] - div_diff[jj])/(X[ii] - X[jj])
@@ -59,11 +59,11 @@ def Gershgorin(A):
     """
     Parameters
     ----------
-    A       : N x N matrix A
+    A        : N x N matrix A
 
     Returns
     -------
-    eig_real : Largest real eigen value
+    eig_real : Largest real eigen value (negative magnitude)
     eig_imag : Largest imaginary eigen value
 
     """
@@ -78,7 +78,7 @@ def Gershgorin(A):
         row_sum_real[ii] = np.sum(abs(A_Herm[ii, :]))
         row_sum_imag[ii] = np.sum(abs(A_SkewHerm[ii, :]))
 
-    eig_real = np.max(row_sum_real)
+    eig_real = - np.max(row_sum_real)       # Has to be NEGATIVE
     eig_imag = np.max(row_sum_imag)
 
     return eig_real, eig_imag
@@ -87,9 +87,9 @@ def Power_iteration(A, u, m):
     """
     Parameters
     ----------
-    A       : N x N matrix A
-    u       : Vector u
-    m       : Index of u (u^m)
+    A             : N x N matrix A
+    u             : Vector u
+    m             : Index of u (u^m)
 
     Returns
     -------
@@ -125,14 +125,16 @@ def Power_iteration(A, u, m):
 
         return eigen_val[ii], ii
 
-    eigen_real, i1 = eigens(A_Herm)
     eigen_imag, i2 = eigens(A_SkewHerm)
+    eigen_real, i1 = eigens(A_Herm)  
+    # Real eigen value has to be negative     
+    eigen_real = - eigen_real
 
     return eigen_real, eigen_imag, ((2 * (i1 + 1)) + (2 * (i2 + 1)))
 
 ################################################################################################
 
-def real_Leja_exp(A, u, m, u_func, dt, c_real, Gamma_real):
+def real_Leja_exp(A, u, dt, c_real, Gamma_real):
     """
     Parameters
     ----------
@@ -159,14 +161,15 @@ def real_Leja_exp(A, u, m, u_func, dt, c_real, Gamma_real):
     coeffs = Divided_Difference(Leja_X, func)       # Polynomial Coefficients
 
     ## a_0 term
-    poly = u_func.copy()
+    poly = u.copy()
     poly = coeffs[0] * poly
 
     ## a_1, a_2 .... a_n terms
-    max_Leja_pts = 50
-    y = u_func.copy()
-    poly_tol = 1e-7 * np.min(u_func)
-    epsilon = 1e-7
+    max_Leja_pts = 100
+    y = u.copy()
+    poly_vals = np.zeros(max_Leja_pts)
+    y_val = np.zeros((max_Leja_pts, len(u)))
+    poly_tol = 1e-7
     scale_fact = 1/Gamma_real                                    # Re-scaling factor
 
     for ii in range(1, max_Leja_pts):
@@ -175,49 +178,26 @@ def real_Leja_exp(A, u, m, u_func, dt, c_real, Gamma_real):
 
         ## function: function to be multiplied to the matrix exponential of the Jacobian
         function = y.copy()
-        Jacobian_function = (A.dot((u + (epsilon * function))**m) - A.dot(u**m))/epsilon
+        Jacobian_function = A.dot(function)
 
         y = y * shift_fact
         y = y + scale_fact * Jacobian_function
         
         poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
-        
-        ## If new number (next order) to be added < tol, ignore it
-        if  poly_vals[ii] < poly_tol:
-            # print('No. of Leja points used (imag phi) = ', ii)
-            # print('----------Tolerance reached---------------')
-            y_val[ii, :] = coeffs[ii] * y
+
+        poly = poly + coeffs[ii] * y
+
+        if poly_vals[ii] < poly_tol:
+            print('No. of Leja points used (real exp) = ', ii)
             break
-        
-        elif ii > 4 and poly_vals[ii] > poly_vals[ii - 1]:
-            # print('No. of Leja points used (imag phi) = ', ii)
-            # print('----------Diverging---------------')
-            break
-            
-        else:
-            y_val[ii, :] = coeffs[ii] * y
 
         if ii >= max_Leja_pts - 1:
             print('ERROR: max number of Leja iterations reached (real exp)', ii)
-            
-    ### Choose polynomial terms up to the smallest term, ignore the rest
-    if poly_vals[1] == 0 and poly_vals[2] == 0 and poly_vals[3] == 0:        # poly_vals[1] = 0, no more terms needed
-        min_poly_val_x = 0   
-    
-    elif np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
-        min_poly_val_x = np.argmin(poly_vals[np.nonzero(poly_vals)])
-        
-    else:
-        min_poly_val_x = np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1     # Starts to diverge
-            
-    
-    for jj in range(1, min_poly_val_x + 1):
-        poly = poly + y_val[jj, :]    
 
     ## Solution
     u_real = poly.copy()
 
-    return u_real, ii * 2
+    return u_real, ii
 
 ################################################################################################
 
@@ -253,10 +233,13 @@ def imag_Leja_exp(A, u, dt, c_imag, Gamma_imag):
     poly = coeffs[0] * poly
 
     ## a_1, a_2 .... a_n terms
-    max_Leja_pts = 50
+    max_Leja_pts = 100
+    poly_vals = np.zeros(max_Leja_pts)
     y = u.copy() + 0 * 1j
     poly_vals = np.zeros(max_Leja_pts)
     scale_fact = 1/Gamma_imag                                   # Re-scaling factor
+
+    poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
     
     for ii in range(1, max_Leja_pts):
 
@@ -352,15 +335,6 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
     Leja_X = Leja_Points()                          # Leja Points
     coeffs = Divided_Difference(Leja_X, func)       # Polynomial Coefficients
 
-    # for jj in range(len(coeffs)):
-
-    #     if coeffs[jj] > 100:
-    #         print('Coeffs = ', coeffs[jj], jj)
-
-            # """
-            #     Go back to traditional controller to reduce dt
-            # """
-
     ## Define matrices
     if len(A) == 2:
         A_adv = A[0]; m_adv = A[1]
@@ -378,10 +352,9 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
 
     ## a_1, a_2 .... a_n terms
     y = nonlin_matrix_vector.copy()
-    max_Leja_pts = 250
+    max_Leja_pts = int(len(coeffs)/5)
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-4 * np.mean(abs(nonlin_matrix_vector))
-    # print(np.min(abs(nonlin_matrix_vector)))
+    poly_tol = 1e-5 * np.mean(abs(nonlin_matrix_vector))
     epsilon = 1e-7
     y_val = np.zeros((max_Leja_pts, len(u)))
     
@@ -406,33 +379,16 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
         
         poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
         
-        # if poly_vals[ii] > 1e2:
-
-        #     # Diverges from 1st term (dt too large)
-        #     print('Coeffs = ', poly_vals[ii], coeffs[ii])
-            
-        #     print('Returning same value of u...........')
-        #     # poly = u
-            
-        #     # return u_real, ii * len(A)
-        #     # poly_vals = poly_vals * 0
-        #     # y_val = y_val * 0
-
-        #     u_real = u * 0 #poly.copy()    # 1st term only (a_0)
-
-        #     return u_real, ii * len(A)
-        
-        # print('Coeffs = ', poly_vals[ii], coeffs[ii])
-        
         ## If new number (next order) to be added < tol, ignore it
         if  poly_vals[ii] < poly_tol:
-            # print('No. of Leja points used (imag phi) = ', ii)
+            print('No. of Leja points used (imag phi) = ', ii)
             # print('----------Tolerance reached---------------')
             y_val[ii, :] = coeffs[ii] * y
             break
         
-        elif ii > 4 and poly_vals[ii] > poly_vals[ii - 1]:
-            # print('No. of Leja points used (imag phi) = ', ii)
+        ## If new poly terms still/start to diverge after 4 terms, stop
+        elif ii > 10 and poly_vals[ii] > poly_vals[ii - 1]:
+            print('No. of Leja points used (imag phi) = ', ii)
             # print('----------Diverging---------------')
             break
             
@@ -442,13 +398,13 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c_real, Gamma_real, phi_func, *A)
         if ii >= max_Leja_pts - 1:
             print('ERROR: max number of Leja iterations reached (real phi)', ii)
             
-    ### ------------------------------------------------------------------- ###
+    # ### ------------------------------------------------------------------- ###
             
     ### Choose polynomial terms up to the smallest term, ignore the rest
-    if poly_vals[1] == 0:        # poly_vals[1] = 0, no more terms needed
-        min_poly_val_x = 0   
+    # if poly_vals[1] == 0:                                                    # poly_vals[1] = 0, no more terms needed
+    #     min_poly_val_x = 0   
     
-    elif np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
+    if np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
         min_poly_val_x = np.argmin(poly_vals[np.nonzero(poly_vals)])
         
     else:
@@ -523,9 +479,11 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
 
         return var
 
+    ### ------------------------------------------------------------------- ###
+
     Leja_X = Leja_Points()                          # Leja Points
     coeffs = Divided_Difference(Leja_X, func)       # Polynomial Coefficients
-    
+
     ## Define matrices
     if len(A) == 2:
         A_adv = A[0]; m_adv = A[1]
@@ -534,16 +492,18 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
         A_dif = A[2]; m_dif = A[3]
     else:
         print("Error! Check number of matrices!!")
-              
+        
+    ### ------------------------------------------------------------------- ###
+
     ## a_0 term
-    poly = nonlin_matrix_vector.copy() + 0 * 1j
+    poly = nonlin_matrix_vector.copy()
     poly = coeffs[0] * poly
-    
+
     ## a_1, a_2 .... a_n terms
-    y = nonlin_matrix_vector.copy() + 0 * 1j
-    max_Leja_pts = 500
+    y = nonlin_matrix_vector.copy()
+    max_Leja_pts = len(coeffs)
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-4 * np.mean(abs(nonlin_matrix_vector))
+    poly_tol = 1e-5 * np.mean(abs(nonlin_matrix_vector))
     epsilon = 1e-7
     y_val = np.zeros((max_Leja_pts, len(u)), dtype = complex)
     
@@ -567,7 +527,7 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
         y = y + scale_fact * Jacobian_function * (-1j)
         
         poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
-
+        
         ## If new number (next order) to be added < tol, ignore it
         if  poly_vals[ii] < poly_tol:
             # print('No. of Leja points used (imag phi) = ', ii)
@@ -575,24 +535,25 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
             y_val[ii, :] = coeffs[ii] * y
             break
         
-        elif ii > 4 and poly_vals[ii] > poly_vals[ii - 1]:
+        ## If new poly terms still/start to diverge after 4 terms, stop
+        elif ii > 10 and poly_vals[ii] > poly_vals[ii - 1]:
             # print('No. of Leja points used (imag phi) = ', ii)
             # print('----------Diverging---------------')
             break
             
         else:
             y_val[ii, :] = coeffs[ii] * y
-        
-        
-        if ii >= max_Leja_pts - 1:
-            print('ERROR: max number of Leja iterations reached (imag phi)', ii)
-            print('-------------------------------------------------------------------------')
 
+        if ii >= max_Leja_pts - 1:
+            print('ERROR: max number of Leja iterations reached (real phi)', ii)
+            
+    # ### ------------------------------------------------------------------- ###
+            
     ### Choose polynomial terms up to the smallest term, ignore the rest
-    if poly_vals[1] == 0 and poly_vals[2] == 0 and poly_vals[3] == 0:        # poly_vals[1] = 0, no more terms needed
-        min_poly_val_x = 0   
+    # if poly_vals[1] == 0:                                                    # poly_vals[1] = 0, no more terms needed
+    #     min_poly_val_x = 0   
     
-    elif np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
+    if np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
         min_poly_val_x = np.argmin(poly_vals[np.nonzero(poly_vals)])
         
     else:
@@ -600,12 +561,11 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c_imag, Gamma_imag, phi_func, *A)
             
     
     for jj in range(1, min_poly_val_x + 1):
-        poly = poly + y_val[jj, :]    
+        poly = poly + y_val[jj, :]
             
     ## Solution
     u_imag = poly.copy()
 
     return np.real(u_imag), ii * len(A)
-
 
 ################################################################################################

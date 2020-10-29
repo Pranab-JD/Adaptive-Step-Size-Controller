@@ -137,8 +137,8 @@ def Trad_Controller(Method, p, error, u, dt_inp, tol):
             # print('Error within limits. dt accepted!! Error = ', error)
             dt_used = dt
             dt_new = dt
-            print('Step size accepted')
-            print('-------------------------------------------------------------------------')
+            # print('Step size accepted')
+            # print('-------------------------------------------------------------------------')
             break
 
         ## Error alert

@@ -4,7 +4,7 @@ Created on Mon Oct 26 18:24:14 2020
 @author: Pranab JD
 
 Description: 
-    This code solves the porous medium equation:
+    This code solves the inviscid Burgers' equation:
     du/dt = d^2(u^2)/dx^2 + eta * du/dx (1D)
     using different exponential time integrators.
     Advective term - 3rd order upwind scheme
@@ -14,33 +14,28 @@ Description:
 import numpy as np
 from Class_Controller import *
 from Leja_Interpolation import *
-from Integrators_2_matrices import *
+from Integrators_1_matrix import *
 
 ##############################################################################
 
-class Porous_Medium_1D(Cost_Controller):
+class Inviscid_Burgers_1D(Cost_Controller):
     
     def __init__(self, N, tmax, eta, error_tol):
         super().__init__(N, tmax, eta, error_tol)
-        self.x_1 = 0.25                         # Position of Heaviside function 1
-        self.x_2 = 0.6                          # Position of Heaviside function 2
+        self.sigma = 0.02               # Amplitude of Gaussian
+        self.x_0 = 0.9                  # Center of the Gaussian
         self.initialize_U()
         self.eigen_linear_operators()
     
 	### Initial distribution
     def initialize_U(self):
-        u0 = 1 + np.heaviside(self.X, self.x_1) + np.heaviside(self.X, self.x_2)
+        u0 = 1 + (np.exp(1 - (1/(1 - (2 * self.X - 1)**2)))) + 1./2. * np.exp(-(self.X - self.x_0)**2/(2 * self.sigma**2))
         self.u = u0.copy()
-        
-    def eigen_linear_operators(self):
-        global c_real_adv, Gamma_real_adv, c_imag_adv, Gamma_imag_adv
-        eigen_min_adv = 0                                           # Min real eigen value
-        eigen_max_adv, eigen_imag_adv = Gershgorin(self.A_adv)      # Max real, imag eigen value
-        c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
-        Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
-        c_imag_adv = 0
-        Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
-        
+
+    def initialize_matrices(self):
+        super().initialize_matrices()
+        self.A_adv = 0.5 * self.A_adv   # 1/2, since conservative form of Burgers' equation
+        self.A_dif = 0                  # Inviscid equation
 
     ##############################################################################    
         
@@ -60,15 +55,17 @@ class Porous_Medium_1D(Cost_Controller):
 
         """
 
-        ## Eigen values (Diffusion)
-        eigen_min_dif = 0
-        eigen_max_dif, eigen_imag_dif, its_power = Power_iteration(self.A_dif, u, 2)   # Max real, imag eigen value
-        eigen_max_dif = eigen_max_dif * 1.25                                           # Safety factor
-        eigen_imag_dif = eigen_imag_dif * 1.25                                         # Safety factor
+        ## Eigen values (Advection)
+        eigen_min_adv = 0
+        eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
+        eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
+        eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
 
         ## c and gamma
-        c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
-        Gamma_real_dif = 0.25 * (eigen_max_dif - eigen_min_dif)
+        c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
+        Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
+        c_imag_adv = 0
+        Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
 
         ############## --------------------- ##############
 
@@ -79,11 +76,11 @@ class Porous_Medium_1D(Cost_Controller):
         # c, Gamma = c_real_adv, Gamma_real_adv
         # c, Gamma = c_imag_adv, Gamma_imag_adv
 
-        u_sol, its_sol = EXPRB32(self.A_adv, 1, self.A_dif, 2, u, dt, c_real_dif, Gamma_real_dif, c_imag_adv, Gamma_imag_adv)[0:2]
+        u_sol, its_sol = EXPRB32(self.A_adv, 2, u, dt, c_real_dif, Gamma_real_dif, c_imag_adv, Gamma_imag_adv)[0:2]
         
-        u_ref, its_ref = EXPRB42(self.A_adv, 1, self.A_dif, 2, u, dt, c_imag_adv, Gamma_imag_adv)
+        u_ref, its_ref = EXPRB42(self.A_adv, 2, u, dt, c_imag_adv, Gamma_imag_adv)
 
-        # u_ref, its_ref = RK4(self.A_adv, 1, self.A_dif, 2, u, dt)
+        # u_ref, its_ref = RK4(self.A_adv, 2, self.A_dif, 1, u, dt)
 
         # global Method_order
         # Method_order = 2
