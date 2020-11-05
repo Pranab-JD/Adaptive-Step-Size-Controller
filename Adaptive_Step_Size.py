@@ -11,86 +11,7 @@ import numpy as np
 
 ################################################################################################
 
-def Richardson_Extrapolation(Method, p, u_sol, u, dt_inp, tol):
-    """
-    Parameters
-    ----------
-    p           		: Order of Method
-    A_adv/A_dif 		: N x N advection and diffusion matrices
-    m_adv/m_dif			: Index of u for advection/diffusion
-    Method      		: Time integration scheme (function: Solution)
-    u_sol       		: Solution using desired integrator
-    u            		: 1D vector u
-    dt_inp      		: dt input
-    tol         		: Maximum tolerance
-
-    Returns
-    ---------
-    u_sol       		: Solution using desired integrator (same as input, if error < tol)
-    u_ref       		: Reference solution (same as input, if error < tol)
-    dt_inp          	: dt input
-    dt_used				: dt used in this time step (= dt_inp, if error < tol)
-    dt_new				: dt for next time step (= dt used, if error > tol)
-    counts+its_ref_1    : Number of matrix-vector products (= its_ref_1, if error < tol)
-
-    """
-
-    ## Max. number of iters to achieve tolerance in a single time loop
-    n_iters = 1000
-    counts = 0              # Counter for matrix-vector products
-
-    u_ref_1, u, its_ref_1 = Method(u, dt_inp/2)
-    u_ref, u, its_ref_2 = Method(u_ref_1, dt_inp/2)
-
-    ### Error estimate ###
-    error = np.mean(abs(u_ref - u_sol))
-
-    ### If error > tol, reduce dt till error < tol
-    if error > tol:
-
-        dt = dt_inp
-
-        for mm in range(n_iters):
-
-            ### Step size controller ###
-            new_dt = dt * (tol/error)**(1/(p + 1))
-            dt = 0.875 * new_dt          # Safety factor
-
-            ## Re-calculate u_ref, u_sol, and error
-            u_ref_1, u, its_ref_3 = Method(u, dt/2)
-            u_ref, u, its_ref_4 = Method(u_ref_1, dt/2)
-            u_sol, u, its_method = Method(u, dt)
-
-            error = np.mean(abs(u_ref - u_sol))
-
-            ### Matrix-vector products
-            counts = counts + its_method + its_ref_3 + its_ref_4
-
-            if error <= tol:
-                # print('Error within limits. dt accepted!! Error = ', error)
-                dt_used = dt
-                dt_new = dt
-                break
-
-            ## Error alert
-            if mm == (n_iters - 1):
-                print('Max iterations reached. Check parameters!!!')
-
-    ## Increase/decrease dt for next time step
-    else:
-
-        dt_used = dt_inp
-
-        ### Step size controller ###
-        new_dt = dt_inp * (tol/error)**(1/(p + 1))
-        dt_new = 0.875 * new_dt          # Safety factor
-
-    return u_sol, u_ref, dt_inp, dt_used, dt_new, counts + its_ref_1 + its_ref_2
-
-
-################################################################################################
-
-def Trad_Controller(Method, p, error, u, dt_inp, tol):
+def Traditional_Controller(Method, p, error, u, dt_inp, tol):
     """
     Parameters
     ----------
@@ -120,25 +41,23 @@ def Trad_Controller(Method, p, error, u, dt_inp, tol):
 
     for mm in range(n_iters):
 
-        print('Step size Rejected!!!', error)
+        print('Step size Rejected!!! Error =', error)
 
-        ### Step size controller ###
+        ### Traditional step size controller ###
         new_dt = dt * (tol/error)**(1/(p + 1))
         dt = 0.875 * new_dt          # Safety factor
 
         ## Re-calculate u_ref, u_sol, and error
         u_sol, u_ref, u, its_method = Method(u, dt)
-        error = np.mean(abs(u_ref - u_sol))
+        error = np.max(abs(u_ref - u_sol))
 
-        ### Count of matrix-vector products
+        ## Count of matrix-vector products
         counts = counts + its_method
 
         if error <= tol:
-            # print('Error within limits. dt accepted!! Error = ', error)
+            print('Error within limits. dt accepted!! Error = ', error)
             dt_used = dt
             dt_new = dt
-            # print('Step size accepted')
-            # print('-------------------------------------------------------------------------')
             break
 
         ## Error alert
@@ -150,7 +69,20 @@ def Trad_Controller(Method, p, error, u, dt_inp, tol):
 
 ################################################################################################
 
-def Step_Size_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
+def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
+    """
+    Parameters
+    ----------
+    count_mat_vec_n        : Number of matrix-vector products at time step 'n'
+    dt_n                   : dt at time step 'n'
+    count_mat_vec_n_1      : Number of matrix-vector products at time step 'n-1'
+    dt_n_1                 : dt at time step 'n-1'
+
+    Returns
+    ---------
+    dt                     : dt (optimised for cost control)
+
+    """
 
     cost_n = count_mat_vec_n/dt_n
     cost_n_1 = count_mat_vec_n_1/dt_n_1
