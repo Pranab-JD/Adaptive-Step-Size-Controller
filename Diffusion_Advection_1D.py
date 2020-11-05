@@ -21,6 +21,8 @@ class Diffusion_Advection_1D(Cost_Controller):
     
     def __init__(self, N, tmax, eta, error_tol):
         super().__init__(N, tmax, eta, error_tol)
+        self.sigma = 0.02               # Amplitude of Gaussian
+        self.x_0 = 0.9                  # Center of the Gaussian
         self.sigma_init = 1.4 * 1e-3                        # Initial amplitude of Gaussian
         self.initialize_U()
         self.eigen_linear_operators()
@@ -32,7 +34,7 @@ class Diffusion_Advection_1D(Cost_Controller):
         
     def initialize_matrices(self):
         super().initialize_matrices()
-        self.A = self.A_dif + self.A_adv
+        self.A = self.A_adv
 
     def eigen_linear_operators(self):
         global eigen_min, eigen_max, eigen_imag, c_real, Gamma_real, c_imag, Gamma_imag
@@ -56,9 +58,8 @@ class Diffusion_Advection_1D(Cost_Controller):
         Returns
         -------
         u_sol       : 1D vector u (output) after time dt using the preferred method
-        u_ref       : 1D vector u (output) after time dt using the reference method
         u           : 1D vector u (input)
-        its_mat_vec : Number of matrix-vector products
+        its_sol     : Number of matrix-vector products
 
         """
 
@@ -69,12 +70,7 @@ class Diffusion_Advection_1D(Cost_Controller):
 
         u_sol, its_sol = real_Leja_exp(self.A, u, dt, c_real, Gamma_real)
         # u_sol, its_sol = imag_Leja_exp(self.A, u, dt, c_imag, Gamma_imag)
-        
-        its_ref = 0
 
-        ## No. of matrix-vector products
-        its_mat_vec = its_sol + its_ref
-
-        return u_sol, u, its_mat_vec
+        return u_sol, u, its_sol
     
     ##############################################################################

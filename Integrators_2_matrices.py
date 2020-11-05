@@ -5,7 +5,11 @@ Created on Wed Aug 19 16:17:29 2020
 
 Description: -
         Contains several integrators 2 matrices equations
-        (A_Adv.u^m_adv + A_Diff.u^m_dif)
+        (A_adv.u^m_adv + A_dif.u^m_dif)
+
+        The exponential integrators in this code have been 
+        optimsed for a combination of 1 nonlinear operator 
+        matrix and 1 linear operator matrix.
 
 """
 
@@ -104,7 +108,7 @@ def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
     Returns
     -------
-    u_etd       : 1D vector u (output) after time dt
+    u_etd       : 1D vector u (output) after time dt (1st or 2nd order)
     mat_vec_num : # of matrix-vector products
 
     """
@@ -154,6 +158,8 @@ def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 ##############################################################################
 
 ### ETDRK2 ###
+
+def ETDRK2(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
     """
     Parameters
     ----------
@@ -168,14 +174,12 @@ def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
     Returns
     -------
-    u_etdrk2    : 1D vector u (output) after time dt
+    u_etdrk2    : 1D vector u (output) after time dt (2nd order)
     mat_vec_num : # of matrix-vector products
 
     """
 
-def ETDRK2(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
-
-    epsilon = 1e-12
+    epsilon = 1e-7
     
     ############## --------------------- ##############
     
@@ -254,17 +258,16 @@ def ETDRK2(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
 
 ### EXPRB42 ###
 
-def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
+def EXPRB42(A_nl, m_nl, A_lin, u, dt, c, Gamma):
     """
     Parameters
     ----------
-    A_adv   : Advection matrix (A)
-    m_adv   : Index of u (u^m_adv); advection
-    A_dif   : Diffusion matrix (A)
-    m_dif   : Index of u (u^m_dif); diffusion
-    u       : 1D vector u (Input)
-    dt      : dt
-    c, Gamma: Parameters for Leja extrapolation
+    A_nl        : Nonlinear operator matrix (A)
+    m_nl        : Index of u (u^m_nl)
+    A_dif       : Linear operator matrix (A)
+    u           : 1D vector u (Input)
+    dt          : dt
+    c, Gamma    : Parameters for Leja extrapolation
 
     Returns
     -------
@@ -273,37 +276,40 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
     """
     
+    ############## --------------------- ##############
+
     epsilon = 1e-7
-    
-    ############## --------------------- ##############
 
-    ### Matrix-vector function
-    f_u = A_adv.dot(u**m_adv) + A_dif.dot(u**m_dif)
+    ### Linear operator
+    f_u_lin = A_lin.dot(u)
 
-    ### J(u) * u
-    Linear_u = (A_adv.dot((u + (epsilon * u))**m_adv) + A_dif.dot((u + (epsilon * u))**m_dif) - f_u)/epsilon
-    
-    ### F(u) = f(u) - (J(u) * u)
-    Nonlin_u = f_u - Linear_u
-    
+    ### Nonlinear operator
+    f_u_nl = A_nl.dot(u**m_nl)
+
     ############## --------------------- ##############
     
-    a_n_f, its_a = imag_Leja_phi(u, f_u, 3*dt/4, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+    a_n_f, its_a = imag_Leja_phi(u, (f_u_lin + f_u_nl), 3*dt/4, c, Gamma, phi_1, A_nl, m_nl, A_lin)
     
     a_n = u + (a_n_f * 3*dt/4)
     
     ############## --------------------- ##############
+
+    ### J(u) * u
+    Linear_u = (A_nl.dot((u + (epsilon * u))**m_nl) - f_u_nl)/epsilon
+    
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u_nl - Linear_u
     
     ### J(u) * a
-    Linear_a = (A_adv.dot((u + (epsilon * a_n))**m_adv) + A_dif.dot((u + (epsilon * a_n))**m_dif) - f_u)/epsilon
+    Linear_a = (A_nl.dot((u + (epsilon * a_n))**m_nl) - f_u_nl)/epsilon
     
     ### F(a) = f(a) - (J(u) * a)
-    Nonlin_a = A_adv.dot(a_n**m_adv) + A_dif.dot(a_n**m_dif) - Linear_a
+    Nonlin_a = A_nl.dot(a_n**m_nl) - Linear_a
     
     ############## --------------------- ##############
 
-    u_1, its_1 = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
-    u_nl_3, its_3 = imag_Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
+    u_1, its_1 = imag_Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
+    u_nl_3, its_3 = imag_Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl, A_lin)
     
     u_exprb42 = u + (u_1 * dt) + (u_nl_3 * 32*dt/9)
     
@@ -311,14 +317,13 @@ def EXPRB42(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
 
 ##############################################################################
 
-def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
+def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     """
     Parameters
     ----------
-    A_adv       : Advection matrix (A)
-    m_adv       : Index of u (u^m_adv); advection
-    A_dif       : Diffusion matrix (A)
-    m_dif       : Index of u (u^m_dif); diffusion
+    A_nl        : Nonlinear operator matrix (A)
+    m_nl        : Index of u (u^m_nl)
+    A_lin       : Linear operator matrix (A)
     u           : 1D vector u (Input)
     dt          : dt
     c, Gamma    : Parameters for Leja extrapolation
@@ -329,6 +334,8 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
     mat_vec_num : # of matrix-vector products
 
     """
+
+    ############## --------------------- ##############
     
     ## Use either Real Leja or imaginary Leja
     if Real_Imag_Leja == 0:
@@ -340,37 +347,40 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
         
     epsilon = 1e-7
 
-    ### RHS of PDE at u
-    f_u = A_adv.dot(u**m_adv) + A_dif.dot(u**m_dif)
+    ### Linear operator
+    f_u_lin = A_lin.dot(u)
 
-    ### J(u) * u
-    Linear_u = (A_adv.dot((u + (epsilon * u))**m_adv) + A_dif.dot((u + (epsilon * u))**m_dif) - f_u)/epsilon
-
-    ### F(u) = f(u) - (J(u) * u)
-    Nonlin_u = f_u - Linear_u
+    ### Nonlinear operator
+    f_u_nl = A_nl.dot(u**m_nl)
     
     ############## --------------------- ##############
     
     ### Internal stage 1 and 2nd order solution
 
-    a_n_f, its_a = Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+    a_n_f, its_a = Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
     a_n = u + (a_n_f * dt)
 
     u_exprb2 = a_n
 
     ############## --------------------- ##############
 
-    ### J(u) * a
-    Linear_a = (A_adv.dot((u + (epsilon * a_n))**m_adv) + A_dif.dot((u + (epsilon * a_n))**m_dif) - f_u)/epsilon
+    ### J(u) * u
+    Linear_u = (A_nl.dot((u + (epsilon * u))**m_nl) - f_u_nl)/epsilon
     
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u_nl - Linear_u
+
+    ### J(u) * a
+    Linear_a = (A_nl.dot((u + (epsilon * a_n))**m_nl) - f_u_nl)/epsilon
+
     ### F(a) = f(a) - (J(u) * a)
-    Nonlin_a = A_adv.dot(a_n**m_adv) + A_dif.dot(a_n**m_dif) - Linear_a
+    Nonlin_a = A_nl.dot(a_n**m_nl) - Linear_a
     
     ############## --------------------- ##############
     
     ### 3rd order solution
 
-    u_3, its_3 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
+    u_3, its_3 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl)
 
     u_exprb3 = u_exprb2 + (u_3 * 2 * dt)
     
@@ -378,23 +388,28 @@ def EXPRB32(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
 
 ##############################################################################
 
-def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
+### EXPRB43 ###
+
+def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     """
     Parameters
     ----------
-    A_adv       : Advection matrix (A)
-    m_adv       : Index of u (u^m_adv); advection
-    A_dif       : Diffusion matrix (A)
-    m_dif       : Index of u (u^m_dif); diffusion
+    A_nl        : Nonlinear operator matrix (A)
+    m_nl        : Index of u (u^m_nl)
+    A_dif       : Linear operator matrix (A)
     u           : 1D vector u (Input)
     dt          : dt
     c, Gamma    : Parameters for Leja extrapolation
+
     Returns
     -------
     u_exprb43   : 1D vector u (output) after time dt (3rd and 4th order)
     mat_vec_num : # of matrix-vector products
+
     """
 
+    ############## --------------------- ##############
+    
     ## Use either Real Leja or imaginary Leja
     if Real_Imag_Leja == 0:
         Leja_phi = real_Leja_phi
@@ -402,68 +417,58 @@ def EXPRB43(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma, Real_Imag_Leja):
         Leja_phi = imag_Leja_phi
     else:
         print('Error in choosing Real/Imag Leja!!')
-    
-    epsilon = 1e-7
         
-    ### Matrix-vector function
-    f_u = A_adv.dot(u**m_adv) + A_dif.dot(u**m_dif)
+    epsilon = 1e-7
 
-    ### J(u) * u
-    Linear_u = (A_adv.dot((u + (epsilon * u))**m_adv) + A_dif.dot((u + (epsilon * u))**m_dif) - f_u)/epsilon
+    ### Linear operator
+    f_u_lin = A_lin.dot(u)
 
-    ### F(u) = f(u) - (J(u) * u)
-    Nonlin_u = f_u - Linear_u
+    ### Nonlinear operator
+    f_u_nl = A_nl.dot(u**m_nl)
     
     ############## --------------------- ##############
 
     ### Internal stage 1
-    a_n_f, its_a = Leja_phi(u, f_u, dt/2, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+    a_n_f, its_a = Leja_phi(u, (f_u_lin + f_u_nl), dt/2, c, Gamma, phi_1, A_nl, m_nl, A_lin)
     a_n = u + a_n_f * dt/2
 
+    ############## --------------------- ##############
+
+    ### J(u) * u
+    Linear_u = (A_nl.dot((u + (epsilon * u))**m_nl) - f_u_nl)/epsilon 
+
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u_nl - Linear_u
+
     ### J(u) * a
-    Linear_a = (A_adv.dot((u + (epsilon * a_n))**m_adv) + A_dif.dot((u + (epsilon * a_n))**m_dif) - f_u)/epsilon
+    Linear_a = (A_nl.dot((u + (epsilon * a_n))**m_nl) - f_u_nl)/epsilon
     
     ### F(a) = f(a) - (J(u) * a)
-    Nonlin_a = A_adv.dot(a_n**m_adv) + A_dif.dot(a_n**m_dif) - Linear_a
+    Nonlin_a = A_nl.dot(a_n**m_nl) - Linear_a
 
     ############# --------------------- ##############
 
     ### Internal stage 2
-    b_n_f, its_b_1 = Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
-    b_n_nl, its_b_2 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
+    b_n_f, its_b_1 = Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
+    b_n_nl, its_b_2 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
        
     b_n = u + (b_n_f * dt) + (b_n_nl * dt)
     
     ### J(u) * b
-    Linear_b = (A_adv.dot((u + (epsilon * b_n))**m_adv) + A_dif.dot((u + (epsilon * b_n))**m_dif) - f_u)/epsilon
+    Linear_b = (A_nl.dot((u + (epsilon * b_n))**m_nl) - f_u_nl)/epsilon 
     
     ### F(b) = f(b) - (J(u) * b)
-    Nonlin_b = A_adv.dot(b_n**m_adv) + A_dif.dot(b_n**m_dif) - Linear_b
-
-    # print('f(u) =', np.mean(abs(f_u)))
-    # print('F(a) - F(u) =', np.mean(abs(Nonlin_a - Nonlin_u)))
-    # print('-14F(u) + 16F(a) - 2F(b) =', np.mean(abs(-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b)))
-    # print('36F(u) - 48F(a) + 12F(b) =', np.mean(abs(36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b)))
+    Nonlin_b = A_nl.dot(b_n**m_nl) - Linear_b
     
-    # ############# --------------------- ##############
+    ############# --------------------- ##############
 
-    # if np.mean(abs(Nonlin_a - Nonlin_u)) > np.mean(abs(f_u)) or \
-    #     np.mean(abs(-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b)) > np.mean(abs(f_u)) or \
-    #     np.mean(abs(36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b)) > np.mean(abs(f_u)):
-
-    #     # Nonlinear remainder has to to be smaller than the linear part
-    #     u_exprb3 = u
-    #     u_exprb4 = u + (0.01 * u)
-
-    #     return u_exprb3, 12 + its_a + its_b_1 + its_b_2, u_exprb4, 12 + its_a + its_b_1 + its_b_2
-    
     u_1 = b_n_f
-    u_nl_3, its_3 = Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_adv, m_adv, A_dif, m_dif)
-    u_nl_4, its_4 = Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_adv, m_adv, A_dif, m_dif)
+    u_nl_3, its_3 = Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_nl, m_nl, A_lin)
+    u_nl_4, its_4 = Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_nl, m_nl, A_lin)
     
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u_exprb3 + (u_nl_4 * dt)
-     
+    
     return u_exprb3, 12 + its_a + its_b_1 + its_b_2 + its_3, u_exprb4, 12 + its_a + its_b_1 + its_b_2 + its_3 + its_4
 
 ##############################################################################

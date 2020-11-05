@@ -43,7 +43,6 @@ class Viscous_Burgers_1D(Cost_Controller):
         eigen_max_dif, eigen_imag_dif = Gershgorin(self.A_dif)      # Max real, imag eigen value
         c_real_dif = 0.5 * (eigen_max_dif + eigen_min_dif)
         Gamma_real_dif = 0.25 * (eigen_min_dif - eigen_max_dif)
-        
 
     ##############################################################################    
         
@@ -81,16 +80,18 @@ class Viscous_Burgers_1D(Cost_Controller):
         ### u_ref, its_ref: Reference solution and the number of iterations needed to get that
         
         c, Gamma = c_real_dif, Gamma_real_dif
-        #### c, Gamma = c_real_adv, Gamma_real_adv
+        # c, Gamma = c_real_adv, Gamma_real_adv
         # c, Gamma = c_imag_adv, Gamma_imag_adv
 
-        u_sol, its_sol, u_ref, its_ref = EXPRB32(self.A_adv, 2, self.A_dif, 1, u, dt, c, Gamma, 0)
+        ### ------------------------------------------------------ ###
 
-        # u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_adv, 2, self.A_dif, 1, u, dt, c, Gamma, 1)
-        
-        # u_ref, its_ref = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, c_imag_adv, Gamma_imag_adv)
+        # u_sol, its_sol, u_ref, its_ref = EXPRB32(self.A_adv, 2, self.A_dif, u, dt, c, Gamma, 0)
+
+        u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_adv, 2, self.A_dif, u, dt, c, Gamma, 0)
 
         # u_ref, its_ref = RK4(self.A_adv, 2, self.A_dif, 1, u, dt)
+
+        ### ------------------------------------------------------ ###
 
         ## No. of matrix-vector products
         its_mat_vec = its_sol + its_ref + its_power

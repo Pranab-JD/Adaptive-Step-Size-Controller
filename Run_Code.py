@@ -30,7 +30,7 @@ System_2 = Viscous_Burgers_1D
 System_3 = Inviscid_Burgers_1D
 System_4 = Diffusion_Advection_1D
 
-class Run_Cost_Controller(System_2):
+class Run_Cost_Controller(System_1):
 
     def run_adaptive_h(self):
 
@@ -72,7 +72,7 @@ class Run_Cost_Controller(System_2):
         cost_iter = 0
         trad_iter = 0
         dt_trad = self.dt
-        Method_order = 2
+        Method_order = 3
 
         ############## --------------------- ##############
 
@@ -86,7 +86,7 @@ class Run_Cost_Controller(System_2):
                 ### Traditional Controller
                 u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
 
-                error = np.mean(abs(u_sol - u_ref))
+                error = np.max(abs(u_sol - u_ref))
 
                 if error > self.error_tol:
                     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
@@ -114,7 +114,7 @@ class Run_Cost_Controller(System_2):
                 u_sol, u_ref, u, num_mv_final = self.Solution(self.u, dt_final)
 
                 ### Error
-                error = np.mean(abs(u_sol - u_ref))
+                error = np.max(abs(u_sol - u_ref))
 
                 ############## --------------------- ##############
 
@@ -143,7 +143,7 @@ class Run_Cost_Controller(System_2):
                 ### Traditional Controller
                 u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
 
-                error = np.mean(abs(u_ref - u_sol))
+                error = np.max(abs(u_ref - u_sol))
 
                 if error > self.error_tol:
                     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
@@ -163,8 +163,6 @@ class Run_Cost_Controller(System_2):
                 cost_trad = num_mv_sol + num_mv_trad
                 cost_cont = 0
                 trad_iter = trad_iter + 1
-
-                # print('dt used', dt_used)
 
                 ############## --------------------- ##############
 
@@ -247,7 +245,7 @@ class Run_Cost_Controller(System_2):
             self.dt = dt_used
             time = time + self.dt
 
-            error = np.mean(abs(u_ref - u_sol))
+            # error = np.mean(abs(u_ref - u_sol))
             # print('Error incurred = ', error)
             # print('dt = ', self.dt, dt_trad)
             # print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
@@ -272,7 +270,7 @@ class Run_Cost_Controller(System_2):
 
         print('Cost controller used in ', cost_iter, 'time steps')
         print('Traditional controller used in ', trad_iter, 'time steps')
-        print('Number of time steps = ', counter)
+        print('Total number of time steps = ', counter)
         print('Total number of matrix-vector products = ', count_mv)
 
         ############## --------------------- ##############
@@ -310,12 +308,17 @@ class Run_Cost_Controller(System_2):
 
         ############## --------------------- ##############
 
+        # path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Inviscid/Constant/eta_10/N_500/EXPRB32/2/dt 0.5/")
+        # if os.path.exists(path):
+        #     shutil.rmtree(path)                     # remove previous directory with same name
+        # os.makedirs(path, 0o777)                    # create directory with access rights
+        
         ### Time loop ###
         while (time < self.tmax):
 
             if time + self.dt > self.tmax:
 
-                if self.tmax - time >= 1e10:
+                if self.tmax - time >= 1e-10:
                     self.dt = self.tmax - time
                     print('Final step size:', self.dt)
 
@@ -323,7 +326,9 @@ class Run_Cost_Controller(System_2):
                     print('Final step size:', self.dt)
 
 
-            u_sol, u, num_mv_sol = self.Solution(self.u, self.dt)
+            u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, self.dt)
+
+            # u_ref, num_mv_sol = RK2(self.A_adv, 2, self.u, self.dt)
 
             ### Update variables
             count_mv = count_mv + num_mv_sol
@@ -335,9 +340,9 @@ class Run_Cost_Controller(System_2):
             ############# --------------------- ##############
 
             ## Test plots
-            # plt.plot(self.X, u_sol, 'b.', label = 'Data')
+            # plt.plot(self.X, u_ref, 'b.', label = 'Data')
             # plt.legend()
-            # plt.pause(self.dt/4)
+            # plt.pause(self.dt/2)
             # plt.clf()
 
             ############## --------------------- ##############
@@ -345,13 +350,17 @@ class Run_Cost_Controller(System_2):
         print('Number of time steps = ', counter)
         print('Total number of matrix-vector products = ', count_mv)
 
-        plt.plot(self.X, self.u, 'b.', label = 'Data')
+        # ### Write final data to separate file   
+        # file_final = open(path + "Final_data.txt", 'w+')
+        # file_final.write(' '.join(map(str, self.u)) % self.u + '\n')
+        # file_final.close()
+        # file_final.close()
 
 
 ##############################################################################
 
 error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8, 1e-8]
-error_list_2 = [1e-7]
+error_list_2 = [1e-4]
 
 ## Assign values for N, tmax, tol, and eta
 for ii in error_list_2:
@@ -361,9 +370,9 @@ for ii in error_list_2:
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
-    N = 700
-    t_max = 5e-4
-    eta = 10
+    N = 100
+    t_max = 3e-3
+    eta = 100
     error_tol = ii
 
     def main():

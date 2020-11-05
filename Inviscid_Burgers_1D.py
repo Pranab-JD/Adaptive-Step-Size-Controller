@@ -22,14 +22,13 @@ class Inviscid_Burgers_1D(Cost_Controller):
     
     def __init__(self, N, tmax, eta, error_tol):
         super().__init__(N, tmax, eta, error_tol)
-        self.sigma = 0.02               # Amplitude of Gaussian
-        self.x_0 = 0.9                  # Center of the Gaussian
+        self.epsilon_1 = 0.01           # Amplitude of 1st sine wave
+        self.epsilon_2 = 0.01           # Amplitude of 2nd sine wave
         self.initialize_U()
-        self.eigen_linear_operators()
     
 	### Initial distribution
     def initialize_U(self):
-        u0 = 1 + (np.exp(1 - (1/(1 - (2 * self.X - 1)**2)))) + 1./2. * np.exp(-(self.X - self.x_0)**2/(2 * self.sigma**2))
+        u0 = 2 + self.epsilon_1 * np.sin(2 * np.pi * self.X) + self.epsilon_2 * np.sin(8 * np.pi * self.X + 0.3)
         self.u = u0.copy()
 
     def initialize_matrices(self):
@@ -63,7 +62,7 @@ class Inviscid_Burgers_1D(Cost_Controller):
 
         ## c and gamma
         c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
-        Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
+        Gamma_real_adv = 0.25 * (eigen_min_adv - eigen_max_adv)
         c_imag_adv = 0
         Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
 
@@ -71,19 +70,19 @@ class Inviscid_Burgers_1D(Cost_Controller):
 
         ### u_sol, its_sol: Solution and the number of iterations needed to get the solution
         ### u_ref, its_ref: Reference solution and the number of iterations needed to get that
-        
-        # c, Gamma = c_real_dif, Gamma_real_dif
-        # c, Gamma = c_real_adv, Gamma_real_adv
-        # c, Gamma = c_imag_adv, Gamma_imag_adv
 
-        u_sol, its_sol = EXPRB32(self.A_adv, 2, u, dt, c_real_dif, Gamma_real_dif, c_imag_adv, Gamma_imag_adv)[0:2]
-        
-        u_ref, its_ref = EXPRB42(self.A_adv, 2, u, dt, c_imag_adv, Gamma_imag_adv)
+        # c, Gamma = c_real_adv, Gamma_real_adv
+        c, Gamma = c_imag_adv, Gamma_imag_adv
+
+        ### ------------------------------------------------------ ###
+
+        # u_sol, its_sol, u_ref, its_ref = EXPRB32(self.A_adv, 2, u, dt, c, Gamma, 1)
+
+        u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_adv, 2, u, dt, c, Gamma, 1)
 
         # u_ref, its_ref = RK4(self.A_adv, 2, self.A_dif, 1, u, dt)
 
-        # global Method_order
-        # Method_order = 2
+        ### ------------------------------------------------------ ###
 
         ## No. of matrix-vector products
         its_mat_vec = its_sol + its_ref + its_power
