@@ -5,7 +5,7 @@ Created on Mon Oct 26 18:24:14 2020
 
 Description:
     Runs the code using designated integrators
-    and step size controllers for the  different
+    and step size controllers for the different
     equations under consideration.
 """
 
@@ -30,44 +30,48 @@ System_2 = Viscous_Burgers_1D
 System_3 = Inviscid_Burgers_1D
 System_4 = Diffusion_Advection_1D
 
-class Run_Cost_Controller(System_1):
+class Run_Cost_Controller(System_2):
 
     def run_adaptive_h(self):
 
-        # ### Create directory
-        # emax = '{:5.1e}'.format(self.error_tol)
-        # n_val = '{:3.0f}'.format(self.N)
-        # path = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/B - 10/N_" + str(n_val) + "/Traditional/RE/tol " + str(emax) + "/EXPRB42/")
-        # path_sim = os.path.expanduser("~/PrJD/Burgers' Equation/1D/Viscous/Adaptive/B - 10/N_" + str(n_val))
-        #
-        # if os.path.exists(path):
-        #     shutil.rmtree(path)                     # remove previous directory with same name
-        # os.makedirs(path, 0o777)                    # create directory with access rights
-        #
-        # ### Write simulation parameters to a file
-        # file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
-        # file_param.write('N = %d' % self.N + '\n')
-        # file_param.write('eta = %f' % self.eta + '\n')
-        # file_param.write('CFL time = %.5e' % self.adv_cfl + '\n')
-        # file_param.write('Simulation time = %e' % self.tmax + '\n')
-        # file_param.write('Max. error = %e' % self.error_tol)
-        # file_param.close()
-        #
-        # ## Create files
-        # file_1 = open(path + "u.txt", 'w+')
-        # file_2 = open(path + "u_ref.txt", 'w+')
-        # file_3 = open(path + "dt.txt", 'w+')
-        #
-        # ## Write initial value of u to files
-        # file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
-        # file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
+        ### Create directory
+        emax = '{:5.1e}'.format(self.error_tol)
+        n_val = '{:3.0f}'.format(self.N)
+        eta_val = '{:2.0f}'.format(self.eta)
+        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/1D/Viscous/Adaptive")
+        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/Penalized/tol " + str(emax) + \
+                                    "/EXPRB43/")
+        path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val))
+
+        if os.path.exists(path):
+            shutil.rmtree(path)                     # remove previous directory with same name
+        os.makedirs(path, 0o777)                    # create directory with access rights
+
+        ### Write simulation parameters to a file
+        file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
+        file_param.write('N = %d' % self.N + '\n')
+        file_param.write('eta = %f' % self.eta + '\n')
+        file_param.write('Adv. CFL time = %.5e' % self.adv_cfl + '\n')
+        file_param.write('Diff. CFL time = %.5e' % self.adv_cfl + '\n')
+        file_param.write('Simulation time = %e' % self.tmax + '\n')
+        file_param.close()
+
+        ## Create files
+        file_1 = open(path + "u.txt", 'w+')
+        file_2 = open(path + "u_ref.txt", 'w+')
+        file_3 = open(path + "dt.txt", 'w+')
+
+        ## Write initial value of u to files
+        file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+        file_2.write(' '.join(map(str, self.u)) % self.u + '\n')
 
         time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
         count_mv = 0                                # Counter for matrix-vector products
 
-        mat_vec_prod = []
         dt_temp = []
+        time_arr = []
+        mat_vec_prod = []
 
         cost_iter = 0
         trad_iter = 0
@@ -79,7 +83,7 @@ class Run_Cost_Controller(System_1):
         ### Time loop ###
         while (time < self.tmax):
 
-            print('Counter =', counter)
+            # print('Counter =', counter)
 
             if counter < 2:
 
@@ -89,15 +93,15 @@ class Run_Cost_Controller(System_1):
                 error = np.max(abs(u_sol - u_ref))
 
                 if error > self.error_tol:
-                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
-                                                                                            error, u, dt_trad, self.error_tol)
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
+                                                                                            Method_order, error, self.error_tol)
                 else:
                     dt_used = dt_trad
                     num_mv_trad = 0
 
                     ### Estimate of dt for next time step if error < tol in the 1st try
                     new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
-                    dt_trad = 0.875 * new_dt          # Safety factor
+                    dt_trad = 0.8 * new_dt          # Safety factor
 
                 cost_trad = num_mv_sol + num_mv_trad
                 cost_cont = 0
@@ -105,7 +109,7 @@ class Run_Cost_Controller(System_1):
 
             ############## --------------------- ##############
 
-            ### dt for final time step
+            ### dt for final time step ###
             elif time + dt_trad >= self.tmax:
 
                 dt_final = self.tmax - time
@@ -123,8 +127,8 @@ class Run_Cost_Controller(System_1):
                     print('Error > tol in the final time step!! Reducing dt.......')
 
                     ### Traditional controller
-                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
-                                                                                            error, u, dt_final, self.error_tol)
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
+                                                                                            Method_order, error, self.error_tol)
 
                     cost_trad = num_mv_final + num_mv_trad
                     cost_cont = 0
@@ -140,97 +144,84 @@ class Run_Cost_Controller(System_1):
 
             else:
 
-                ### Traditional Controller
-                u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
+                # ### Traditional Controller
+                # u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
 
-                error = np.max(abs(u_ref - u_sol))
+                # error = np.max(abs(u_ref - u_sol))
 
-                if error > self.error_tol:
-                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
-                                                                                            error, u, dt_trad, self.error_tol)
+                # if error > self.error_tol:
+                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
+                #                                                                             Method_order, error, self.error_tol)
 
-                else:
-                    dt_used = dt_trad
-                    num_mv_trad = 0
+                # else:
+                #     dt_used = dt_trad
+                #     num_mv_trad = 0
 
-                    # print('Step size accepted')
-                    # print('----------------------------------------------------------------------------------------')
+                #     ### Estimate of dt for next time step if error < tol in the 1st try
+                #     new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
+                #     dt_trad = 0.8 * new_dt          # Safety factor
 
-                    ### Estimate of dt for next time step if error < tol in the 1st try
-                    new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
-                    dt_trad = 0.875 * new_dt          # Safety factor
-
-                cost_trad = num_mv_sol + num_mv_trad
-                cost_cont = 0
-                trad_iter = trad_iter + 1
+                # cost_trad = num_mv_sol + num_mv_trad
+                # cost_cont = 0
+                # trad_iter = trad_iter + 1
 
                 ############## --------------------- ##############
 
-                # ### Cost controller
-                # mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
-                # dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
-                #
-                # dt_controller = Step_Size_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
-                #
-                # # if dt_trad <= 8e-8:
-                # #     dt_trad = 1.25 * min(self.adv_cfl, self.dif_cfl)
-                #
-                # dt = min(dt_controller, dt_trad)
-                #
-                # # print('Initial approx for dt', dt)
-                #
-                # ############## --------------------- ##############
-                #
-                # ### Solve with dt
-                # u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt)
-                #
-                # ### Error
-                # error = np.mean(abs(u_sol - u_ref))
-                #
-                # ############## --------------------- ##############
-                #
-                # if error > self.error_tol:
-                #
-                #     # print('Error = ', error)
-                #
-                #     ### Traditional controller
-                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Trad_Controller(self.Solution, Method_order, \
-                #                                                                             error, u, dt_trad, self.error_tol)
-                #
-                #     cost_trad = num_mv_sol + num_mv_trad
-                #     cost_cont = 0
-                #     trad_iter = trad_iter + 1
-                #
-                # else:
-                #
-                #     if dt == dt_trad:
-                #
-                #         ### dt from traditional controller used; error < tolerance
-                #         cost_trad = num_mv_sol
-                #         cost_cont = 0
-                #         trad_iter = trad_iter + 1
-                #
-                #     elif dt == dt_controller:
-                #
-                #         ### dt from cost controller used
-                #         cost_cont = num_mv_sol
-                #         cost_trad = 0
-                #         cost_iter = cost_iter + 1
-                #
-                #     else:
-                #
-                #         print('Error in selecting dt!! Unknown dt used!!!')
-                #
-                #     ############## --------------------- ##############
-                #
-                #     ## dt used in this time step
-                #     dt_used = dt
-                #
-                #     ### Estimate of dt for next time step using traditional controller ###
-                #     new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
-                #     dt_trad = 0.875 * new_dt          # Safety factor
-
-                # print('Actual dt used', dt_used)
+                ### Cost controller ###
+                mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
+                dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
+                
+                dt_controller = Cost_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
+                
+                dt = min(dt_controller, dt_trad)
+                
+                ############## --------------------- ##############
+                
+                ### Solve with dt
+                u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt)
+                
+                ### Error
+                error = np.mean(abs(u_sol - u_ref))
+                
+                ############## --------------------- ##############
+                
+                if error > self.error_tol:
+                
+                    ### Traditional controller
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
+                                                                                            Method_order, error, self.error_tol)
+                
+                    cost_trad = num_mv_sol + num_mv_trad
+                    cost_cont = 0
+                    trad_iter = trad_iter + 1
+                
+                else:
+                
+                    if dt == dt_trad:
+                
+                        ### dt from traditional controller used; error < tolerance
+                        cost_trad = num_mv_sol
+                        cost_cont = 0
+                        trad_iter = trad_iter + 1
+                
+                    elif dt == dt_controller:
+                
+                        ### dt from cost controller used
+                        cost_cont = num_mv_sol
+                        cost_trad = 0
+                        cost_iter = cost_iter + 1
+                
+                    else:
+                        print('Error in selecting dt!! Unknown dt used!!!')
+                
+                    ############## --------------------- ##############
+                
+                    ## dt used in this time step
+                    dt_used = dt
+                
+                    ### Estimate of dt for next time step using traditional controller ###
+                    new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
+                    dt_trad = 0.875 * new_dt          # Safety factor
 
             ############## --------------------- ##############
 
@@ -244,27 +235,23 @@ class Run_Cost_Controller(System_1):
             self.u = u_ref.copy()
             self.dt = dt_used
             time = time + self.dt
-
-            # error = np.mean(abs(u_ref - u_sol))
-            # print('Error incurred = ', error)
-            # print('dt = ', self.dt, dt_trad)
-            # print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+            time_arr.append(time)
 
             ############# --------------------- ##############
 
-            # ### Write data to files
-            # file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
-            # file_2.write(' '.join(map(str, u_ref)) % u_ref + '\n')
-            # file_3.write('%.15f' % self.dt + '\n')
+            ### Write data to files
+            file_1.write(' '.join(map(str, self.u)) % self.u + '\n')
+            file_2.write(' '.join(map(str, u_ref)) % u_ref + '\n')
+            file_3.write('%.15f' % self.dt + '\n')
 
             ############# --------------------- ##############
 
             ## Test plots
-            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            plt.plot(self.X, u_sol, 'b.', label = 'Data')
-            plt.legend()
-            plt.pause(self.dt/2)
-            plt.clf()
+            # plt.plot(self.X, u_ref, 'rd', label = 'Reference')
+            # plt.plot(self.X, u_sol, 'b.', label = 'Data')
+            # plt.legend()
+            # plt.pause(self.dt/2)
+            # plt.clf()
 
             ############## --------------------- ##############
 
@@ -275,27 +262,29 @@ class Run_Cost_Controller(System_1):
 
         ############## --------------------- ##############
 
-        # ### Write simulation results to file
-        # file_res = open(path + 'Results.txt', 'w+')
-        # file_res.write('Number of time steps = %d' % counter + '\n')
-        # file_res.write('Number of matrix-vector products = %d' % count_mv + '\n')
-        # file_res.write('Cost controller used in %d' % cost_iter + ' time steps')
-        # file_res.close()
-        #
-        # ### Close files
-        # file_1.close()
-        # file_2.close()
-        # file_3.close()
+        ### Write simulation results to file
+        file_res = open(path + 'Results.txt', 'w+')
+        file_res.write('Number of time steps = %d' % counter + '\n')
+        file_res.write('Cost controller used in %d' % cost_iter + ' time steps' + '\n')
+        file_res.write('Number of matrix-vector products = %d' % count_mv)
+        file_res.close()
+        
+        ### Close files
+        file_1.close()
+        file_2.close()
+        file_3.close()
 
+        ############# --------------------- ##############
 
-        x_cnt = np.arange(0, counter, 1)
-        advCFL = np.ones(counter) * self.adv_cfl
-        difCFL = np.ones(counter) * self.dif_cfl
+        # ### Plot dt vs time
+        # advCFL = np.ones(counter) * self.adv_cfl
+        # difCFL = np.ones(counter) * self.dif_cfl
 
-        plt.figure()
-        plt.loglog(x_cnt, dt_temp, 'b')
-        plt.loglog(x_cnt, advCFL, 'r')
-        plt.loglog(x_cnt, difCFL, 'g')
+        # plt.figure()
+        # plt.loglog(time_arr, dt_temp, 'b.:', label = 'dt used')
+        # plt.loglog(time_arr, advCFL, 'r', label = 'Adv. CFL')
+        # plt.loglog(time_arr, difCFL, 'g', label = 'Diff. CFL')
+        # plt.legend()
 
     ##############################################################################
     ##############################################################################
@@ -312,7 +301,7 @@ class Run_Cost_Controller(System_1):
         # if os.path.exists(path):
         #     shutil.rmtree(path)                     # remove previous directory with same name
         # os.makedirs(path, 0o777)                    # create directory with access rights
-        
+
         ### Time loop ###
         while (time < self.tmax):
 
@@ -340,17 +329,18 @@ class Run_Cost_Controller(System_1):
             ############# --------------------- ##############
 
             ## Test plots
-            # plt.plot(self.X, u_ref, 'b.', label = 'Data')
-            # plt.legend()
-            # plt.pause(self.dt/2)
-            # plt.clf()
+            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
+            plt.plot(self.X, u_sol, 'b.', label = 'Data')
+            plt.legend()
+            plt.pause(0.5)
+            plt.clf()
 
             ############## --------------------- ##############
 
         print('Number of time steps = ', counter)
         print('Total number of matrix-vector products = ', count_mv)
 
-        # ### Write final data to separate file   
+        # ### Write final data to separate file
         # file_final = open(path + "Final_data.txt", 'w+')
         # file_final.write(' '.join(map(str, self.u)) % self.u + '\n')
         # file_final.close()
@@ -363,28 +353,25 @@ error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8, 1e-8]
 error_list_2 = [1e-4]
 
 ## Assign values for N, tmax, tol, and eta
-for ii in error_list_2:
+for ii in error_list_1:
 
-    loopTime = datetime.now()
+    tolTime = datetime.now()
 
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
     N = 100
-    t_max = 3e-3
+    t_max = 1e-2
     eta = 100
     error_tol = ii
 
-    def main():
-        sim = Run_Cost_Controller(N, t_max, eta, error_tol)
-        sim.run_adaptive_h()
-        # sim.run_constant_h()
-        plt.show()
+    dim_1 = Run_Cost_Controller(N, t_max, eta, error_tol)
+    dim_1.run_adaptive_h()
+    # dim_1.run_constant_h()
+    plt.show()
 
-    if __name__ == "__main__":
-        main()
 
-    print('Time for given tolerance = ', datetime.now() - loopTime)
+    print('Time for given tolerance = ', datetime.now() - tolTime)
 
 ##################################################################################
 

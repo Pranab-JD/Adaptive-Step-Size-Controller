@@ -3,10 +3,10 @@ Created on Mon Oct 26 18:33:28 2020
 
 @author: Pranab JD
 
-Description: 
-    Initialization of parameters and matrices for 
-    adaptive step size controller using Leja 
-    polynomial interpolation for 
+Description:
+    Initialization of parameters and matrices for
+    adaptive step size controller using Leja
+    polynomial interpolation for
     exponential integrators.
 """
 
@@ -17,7 +17,7 @@ from scipy.sparse import csr_matrix
 ##############################################################################
 
 class Cost_Controller:
-    
+
     def __init__(self, N, tmax, eta, error_tol):
         self.N = int(N)                 # Number of points along X
         self.xmin = 0                   # Min value of X
@@ -28,10 +28,10 @@ class Cost_Controller:
         self.initialize_spatial_domain()
         self.initialize_parameters()
         self.initialize_matrices()
-        
+
 	### Discretize the spatial domain
     def initialize_spatial_domain(self):
-        self.dx = (self.xmax - self.xmin)/(self.N)
+        self.dx = (self.xmax - self.xmin)/self.N
         self.X = np.linspace(self.xmin, self.xmax, self.N, endpoint = False)
 
     ### Parameters
@@ -41,8 +41,7 @@ class Cost_Controller:
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
         print('Tolerance:', self.error_tol)
-        self.dt = 0.01 * min(self.adv_cfl, self.dif_cfl)    # N * CFL condition
-        # self.dt = 1 * self.adv_cfl
+        self.dt = 2 * min(self.adv_cfl, self.dif_cfl)    # N * CFL condition
         self.R = self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
 
@@ -52,16 +51,16 @@ class Cost_Controller:
         self.A_dif = np.zeros((self.N, self.N))
 
         for ij in range(self.N):
-            self.A_adv[ij, int(ij + 2) % self.N] = - self.R
-            self.A_adv[ij, int(ij + 1) % self.N] = 6 * self.R
-            self.A_adv[ij, ij % self.N] = -3 * self.R
-            self.A_adv[ij, int(ij - 1) % self.N] = -2 * self.R
+            self.A_adv[ij, int(ij + 2) % self.N] = -1
+            self.A_adv[ij, int(ij + 1) % self.N] =  6
+            self.A_adv[ij, ij % self.N]          = -3
+            self.A_adv[ij, int(ij - 1) % self.N] = -2
 
-            self.A_dif[ij, int(ij + 1) % self.N] = self.F
-            self.A_dif[ij, ij % self.N] = -2 * self.F
-            self.A_dif[ij, int(ij - 1) % self.N] = self.F
+            self.A_dif[ij, int(ij + 1) % self.N] =  1
+            self.A_dif[ij, ij % self.N]          = -2
+            self.A_dif[ij, int(ij - 1) % self.N] =  1
 
-        self.A_adv = csr_matrix(self.A_adv)
-        self.A_dif = csr_matrix(self.A_dif)
+        self.A_adv = csr_matrix(self.R * self.A_adv)
+        self.A_dif = csr_matrix(self.F * self.A_dif)
 
 ##############################################################################

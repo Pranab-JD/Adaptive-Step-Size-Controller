@@ -7,8 +7,8 @@ Description: -
         Contains several integrators 2 matrices equations
         (A_adv.u^m_adv + A_dif.u^m_dif)
 
-        The exponential integrators in this code have been 
-        optimsed for a combination of 1 nonlinear operator 
+        The exponential integrators in this code have been
+        optimzed for a combination of 1 nonlinear operator
         matrix and 1 linear operator matrix.
 
 """
@@ -33,24 +33,23 @@ def RK4(A_adv, m_adv, A_dif, m_dif, u, dt):
     Returns
     -------
     u_rk4 : 1D vector u (output) after time dt
-    dt    : dt (unchanged)
     8     : # of matrix-vector products
 
     """
-    
+
     k1 = dt * (A_adv.dot(u**m_adv) + A_dif.dot(u**m_dif))
     k2 = dt * (A_adv.dot((u + k1/2)**m_adv) + A_dif.dot((u + k1/2)**m_dif))
     k3 = dt * (A_adv.dot((u + k2/2)**m_adv) + A_dif.dot((u + k1/2)**m_dif))
     k4 = dt * (A_adv.dot((u + k3)**m_adv) + A_dif.dot((u + k1/2)**m_dif))
-    
+
     ## Solution
     u_rk4 = u + 1./6.*(k1 + 2*k2 + 2*k3 + k4)
 
     return u_rk4, 8
 
-############## --------------------- ##############
+##############################################################################
 
-def RKF5(A_adv, m_adv, A_dif, m_dif, u, dt):
+def RKF45(A_adv, m_adv, A_dif, m_dif, u, dt):
     """
     Parameters
     ----------
@@ -63,9 +62,8 @@ def RKF5(A_adv, m_adv, A_dif, m_dif, u, dt):
 
     Returns
     -------
-    u_rkf5 : 1D vector u (Output) after time dt
-    dt     : dt (unchanged)
-    12     : # of matrix-vector products
+    u_rkf45 : 1D vector u (Output) after time dt (4th and 5th order)
+    10, 12  : # of matrix-vector products
 
     """
 
@@ -85,9 +83,10 @@ def RKF5(A_adv, m_adv, A_dif, m_dif, u, dt):
             + A_dif.dot((u - 8./27.*k1 + 2*k2 - 3544./2565.*k3 + 1859./4140.*k4 - 11./40.*k5)**m_dif))
 
     ### Solution
+    u_rkf4 = u + (25./216.*k1 + 1408./2565.*k3 + 2197./4101.*k4 - 1./5.*k5)
     u_rkf5 = u + (16./135.*k1 + 6656./12825.*k3 + 28561./56430.*k4 - 9./50.*k5 + 2./55.*k6)
 
-    return u_rkf5, 12
+    return u_rkf4, 10, u_rkf5, 12
 
 ##############################################################################
 
@@ -112,47 +111,47 @@ def ETD(A_adv, m_adv, A_dif, m_dif, u, dt, c, Gamma):
     mat_vec_num : # of matrix-vector products
 
     """
-    
+
     epsilon = 1e-7
-    
+
     ### Matrix-vector function
     f_u = A_adv.dot(u**2) + A_dif.dot(u)
 
     # ### J(u) * u
     # Linear_u = (A_adv.dot((u + (epsilon * u))**2) + A_dif.dot((u + (epsilon * u))) - f_u)/epsilon
-    # 
+    #
     # ### F(u) = f(u) - (J(u) * u)
     # Nonlin_u = f_u - Linear_u
-    
+
     ############## --------------------- ##############
-    
+
     # def Real_Leja():
-    # 
+    #
     #     ### Solution
     #     u_lin, its_lin = real_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
     #     u_nl, its_nl = real_Leja_phi(A_adv, A_dif, u, 2, 1, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
     #     u_nl = u_nl * dt
-    #     
+    #
     #     return u_lin, u_nl, its_lin + its_nl + 2
-    
+
     ############## --------------------- ##############
-    
+
     def Imag_Leja():
-        
+
         ### Solution
         # u_lin, its_lin = imag_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
         u_nl, its_nl = imag_Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv, A_dif, m_dif)
-        
+
         return u_nl, its_nl + 2
-    
+
     ############## --------------------- ##############
-    
+
     # u_lin, u_nl, mat_vec_num = Real_Leja()
     u_nl, mat_vec_num = Imag_Leja()
-    
+
     ### ETD1 Solution ###
     u_etd = u + (u_nl * dt)
-    
+
     return u_etd, mat_vec_num
 
 ##############################################################################
@@ -180,9 +179,9 @@ def ETDRK2(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
     """
 
     epsilon = 1e-7
-    
+
     ############## --------------------- ##############
-    
+
     ### Matrix-vector function
     f_u = A_adv.dot(u**2) + A_dif.dot(u)
 
@@ -195,12 +194,12 @@ def ETDRK2(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
     ############## --------------------- ##############
 
     def Real_Leja():
-        
+
         ### Solution
         u_lin, its_lin = real_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
         u_nl_1, its_nl_1 = real_Leja_phi(A_adv, A_dif, u, 2, 1, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
         u_nl_1 = u_nl_1 * dt
-        
+
         a_n = u_lin + u_nl_1
 
         ############## --------------------- ##############
@@ -208,50 +207,50 @@ def ETDRK2(A_adv, m_adv, A_dif, m_dif, u, dt, Leja_X, c, Gamma):
         ### RK2 ###
         ### J(u) * a
         Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) + A_dif.dot((u + (epsilon * a_n))) - f_u)/epsilon
-        
+
         ### F(a) = f(a) - (J(u) * a)
         Nonlin_a = A_adv.dot(a_n**2) + A_dif.dot(a_n) - Linear_a
-        
+
         ## Nonlinear Term
         u_nl_2, its_nl_2 = real_Leja_phi(A_adv, A_dif, u, 2, 1, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
         u_nl_2 = u_nl_2 * dt
-        
+
         return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 8
 
     ############## --------------------- ##############
 
     def Imag_Leja():
-        
+
         ### Solution
         u_lin, its_lin = imag_Leja_exp(A_adv, A_dif, u, 2, 1, u, dt, Leja_X, c, Gamma)
         u_nl_1, its_nl_1 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
         u_nl_1 = u_nl_1 * dt
-        
+
         a_n = u_lin + u_nl_1
-        
+
         ############## --------------------- ##############
-    
+
         ### RK2 ###
         ### J(u) * a
         Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) + A_dif.dot((u + (epsilon * a_n))) - f_u)/epsilon
-        
+
         ### F(a) = f(a) - (J(u) * a)
         Nonlin_a = A_adv.dot(a_n**2) + A_dif.dot(a_n) - Linear_a
-        
+
         ## Nonlinear Term
         u_nl_2, its_nl_2 = imag_Leja_phi(A_adv, A_dif, u, 2, 1, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
         u_nl_2 = u_nl_2 * dt
-        
+
         return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 8
-    
+
     ############## --------------------- ##############
-    
+
     # a_n, u_nl_2, mat_vec_num = Real_Leja()
     a_n, u_nl_2, mat_vec_num = Imag_Leja()
-    
+
     ### ETDRK2 Solution ###
     u_etdrk2 = a_n + u_nl_2
-    
+
     return u_etdrk2, mat_vec_num
 
 ##############################################################################
@@ -275,7 +274,7 @@ def EXPRB42(A_nl, m_nl, A_lin, u, dt, c, Gamma):
     mat_vec_num : # of matrix-vector products
 
     """
-    
+
     ############## --------------------- ##############
 
     epsilon = 1e-7
@@ -287,32 +286,32 @@ def EXPRB42(A_nl, m_nl, A_lin, u, dt, c, Gamma):
     f_u_nl = A_nl.dot(u**m_nl)
 
     ############## --------------------- ##############
-    
+
     a_n_f, its_a = imag_Leja_phi(u, (f_u_lin + f_u_nl), 3*dt/4, c, Gamma, phi_1, A_nl, m_nl, A_lin)
-    
+
     a_n = u + (a_n_f * 3*dt/4)
-    
+
     ############## --------------------- ##############
 
     ### J(u) * u
     Linear_u = (A_nl.dot((u + (epsilon * u))**m_nl) - f_u_nl)/epsilon
-    
+
     ### F(u) = f(u) - (J(u) * u)
     Nonlin_u = f_u_nl - Linear_u
-    
+
     ### J(u) * a
     Linear_a = (A_nl.dot((u + (epsilon * a_n))**m_nl) - f_u_nl)/epsilon
-    
+
     ### F(a) = f(a) - (J(u) * a)
     Nonlin_a = A_nl.dot(a_n**m_nl) - Linear_a
-    
+
     ############## --------------------- ##############
 
     u_1, its_1 = imag_Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
     u_nl_3, its_3 = imag_Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl, A_lin)
-    
+
     u_exprb42 = u + (u_1 * dt) + (u_nl_3 * 32*dt/9)
-    
+
     return u_exprb42, 8 + its_a + its_1 + its_3
 
 ##############################################################################
@@ -335,8 +334,6 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     """
 
-    ############## --------------------- ##############
-    
     ## Use either Real Leja or imaginary Leja
     if Real_Imag_Leja == 0:
         Leja_phi = real_Leja_phi
@@ -344,7 +341,7 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
         Leja_phi = imag_Leja_phi
     else:
         print('Error in choosing Real/Imag Leja!!')
-        
+
     epsilon = 1e-7
 
     ### Linear operator
@@ -352,11 +349,10 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     ### Nonlinear operator
     f_u_nl = A_nl.dot(u**m_nl)
-    
-    ############## --------------------- ##############
-    
-    ### Internal stage 1 and 2nd order solution
 
+    ############## --------------------- ##############
+
+    ### Internal stage 1; 2nd order solution
     a_n_f, its_a = Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
     a_n = u + (a_n_f * dt)
 
@@ -366,7 +362,7 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     ### J(u) * u
     Linear_u = (A_nl.dot((u + (epsilon * u))**m_nl) - f_u_nl)/epsilon
-    
+
     ### F(u) = f(u) - (J(u) * u)
     Nonlin_u = f_u_nl - Linear_u
 
@@ -375,15 +371,17 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     ### F(a) = f(a) - (J(u) * a)
     Nonlin_a = A_nl.dot(a_n**m_nl) - Linear_a
-    
+
     ############## --------------------- ##############
-    
+
     ### 3rd order solution
 
-    u_3, its_3 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl)
+    u_3, its_3 = Leja_phi(u, 2*(Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl)
 
-    u_exprb3 = u_exprb2 + (u_3 * 2 * dt)
+    u_exprb3 = u_exprb2 + (u_3 * dt)
     
+    # print(np.mean(abs(u_3 * dt)))
+
     return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a + its_3
 
 ##############################################################################
@@ -408,8 +406,6 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     """
 
-    ############## --------------------- ##############
-    
     ## Use either Real Leja or imaginary Leja
     if Real_Imag_Leja == 0:
         Leja_phi = real_Leja_phi
@@ -417,7 +413,7 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
         Leja_phi = imag_Leja_phi
     else:
         print('Error in choosing Real/Imag Leja!!')
-        
+
     epsilon = 1e-7
 
     ### Linear operator
@@ -425,7 +421,7 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     ### Nonlinear operator
     f_u_nl = A_nl.dot(u**m_nl)
-    
+
     ############## --------------------- ##############
 
     ### Internal stage 1
@@ -435,14 +431,14 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     ############## --------------------- ##############
 
     ### J(u) * u
-    Linear_u = (A_nl.dot((u + (epsilon * u))**m_nl) - f_u_nl)/epsilon 
+    Linear_u = (A_nl.dot((u + (epsilon * u))**m_nl) - f_u_nl)/epsilon
 
     ### F(u) = f(u) - (J(u) * u)
     Nonlin_u = f_u_nl - Linear_u
 
     ### J(u) * a
     Linear_a = (A_nl.dot((u + (epsilon * a_n))**m_nl) - f_u_nl)/epsilon
-    
+
     ### F(a) = f(a) - (J(u) * a)
     Nonlin_a = A_nl.dot(a_n**m_nl) - Linear_a
 
@@ -450,25 +446,25 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     ### Internal stage 2
     b_n_f, its_b_1 = Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
-    b_n_nl, its_b_2 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
-       
+    b_n_nl, its_b_2 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_1, A_nl, m_nl)
+
     b_n = u + (b_n_f * dt) + (b_n_nl * dt)
-    
+
     ### J(u) * b
-    Linear_b = (A_nl.dot((u + (epsilon * b_n))**m_nl) - f_u_nl)/epsilon 
-    
+    Linear_b = (A_nl.dot((u + (epsilon * b_n))**m_nl) - f_u_nl)/epsilon
+
     ### F(b) = f(b) - (J(u) * b)
     Nonlin_b = A_nl.dot(b_n**m_nl) - Linear_b
-    
+
     ############# --------------------- ##############
 
     u_1 = b_n_f
-    u_nl_3, its_3 = Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_nl, m_nl, A_lin)
-    u_nl_4, its_4 = Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_nl, m_nl, A_lin)
-    
+    u_nl_3, its_3 = Leja_phi(u, (-14*Nonlin_u + 16*Nonlin_a - 2*Nonlin_b), dt, c, Gamma, phi_3, A_nl, m_nl)
+    u_nl_4, its_4 = Leja_phi(u, (36*Nonlin_u - 48*Nonlin_a + 12*Nonlin_b), dt, c, Gamma, phi_4, A_nl, m_nl)
+
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u_exprb3 + (u_nl_4 * dt)
-    
+
     return u_exprb3, 12 + its_a + its_b_1 + its_b_2 + its_3, u_exprb4, 12 + its_a + its_b_1 + its_b_2 + its_3 + its_4
 
 ##############################################################################

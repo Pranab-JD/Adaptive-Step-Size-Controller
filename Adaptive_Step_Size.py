@@ -11,7 +11,7 @@ import numpy as np
 
 ################################################################################################
 
-def Traditional_Controller(Method, p, error, u, dt_inp, tol):
+def Traditional_Controller(Method, u, dt_inp, p, error, tol):
     """
     Parameters
     ----------
@@ -34,18 +34,18 @@ def Traditional_Controller(Method, p, error, u, dt_inp, tol):
     """
 
     ## Max. number of iters to achieve tolerance in a single time loop
-    n_iters = 1000
+    n_iters = 100
     counts = 0              # Counter for matrix-vector products
 
     dt = dt_inp
 
     for mm in range(n_iters):
 
-        print('Step size Rejected!!! Error =', error)
+        # print('Step size Rejected!!! Error =', error)
 
         ### Traditional step size controller ###
         new_dt = dt * (tol/error)**(1/(p + 1))
-        dt = 0.875 * new_dt          # Safety factor
+        dt = 0.8 * new_dt          # Safety factor
 
         ## Re-calculate u_ref, u_sol, and error
         u_sol, u_ref, u, its_method = Method(u, dt)
@@ -55,7 +55,7 @@ def Traditional_Controller(Method, p, error, u, dt_inp, tol):
         counts = counts + its_method
 
         if error <= tol:
-            print('Error within limits. dt accepted!! Error = ', error)
+            # print('Error within limits. dt accepted!! Error = ', error)
             dt_used = dt
             dt_new = dt
             break
@@ -65,7 +65,6 @@ def Traditional_Controller(Method, p, error, u, dt_inp, tol):
             print('Max iterations reached. Check parameters!!!')
 
     return u_sol, u_ref, dt_inp, dt_used, dt_new, counts
-
 
 ################################################################################################
 
@@ -90,7 +89,7 @@ def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
     def Non_penalized():
 
         alpha = 0.65241444
-        beta = 0.26862269
+        beta  = 0.26862269
         lambd = 1.37412002
         delta = 0.64446017
 
@@ -99,7 +98,7 @@ def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
     def Penalized():
 
         alpha = 1.19735982
-        beta = 0.44611854
+        beta  = 0.44611854
         lambd = 1.38440318
         delta = 0.73715227
 

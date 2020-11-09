@@ -29,6 +29,10 @@ class Inviscid_Burgers_1D(Cost_Controller):
 	### Initial distribution
     def initialize_U(self):
         u0 = 2 + self.epsilon_1 * np.sin(2 * np.pi * self.X) + self.epsilon_2 * np.sin(8 * np.pi * self.X + 0.3)
+
+        # u0 = 2 + (0.1 * np.sin(2 * np.pi * self.X))
+
+        # u0 = 1 + (np.exp(1 - (1/(1 - (2 * self.X - 1)**2)))) + 1./2. * np.exp(-(self.X - 0.9)**2/(2 * 0.02**2))
         self.u = u0.copy()
 
     def initialize_matrices(self):
@@ -71,14 +75,15 @@ class Inviscid_Burgers_1D(Cost_Controller):
         ### u_sol, its_sol: Solution and the number of iterations needed to get the solution
         ### u_ref, its_ref: Reference solution and the number of iterations needed to get that
 
-        # c, Gamma = c_real_adv, Gamma_real_adv
-        c, Gamma = c_imag_adv, Gamma_imag_adv
+        c, Gamma = c_real_adv, Gamma_real_adv
+        # c, Gamma = c_imag_adv, Gamma_imag_adv
 
         ### ------------------------------------------------------ ###
 
-        # u_sol, its_sol, u_ref, its_ref = EXPRB32(self.A_adv, 2, u, dt, c, Gamma, 1)
+        # u_sol, its_sol, u_ref, its_ref = EXPRB32(self.A_adv, 2, u, dt, c, Gamma, 0)
 
-        u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_adv, 2, u, dt, c, Gamma, 1)
+        u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_adv, 2, u, dt, c, Gamma, 0)
+
 
         # u_ref, its_ref = RK4(self.A_adv, 2, self.A_dif, 1, u, dt)
 
