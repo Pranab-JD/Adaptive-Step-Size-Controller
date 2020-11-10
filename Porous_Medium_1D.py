@@ -4,11 +4,8 @@ Created on Mon Oct 26 18:24:14 2020
 @author: Pranab JD
 
 Description:
-    This code solves the porous medium equation:
+    Porous medium equation:
     du/dt = d^2(u^2)/dx^2 + eta * du/dx (1D)
-    using different exponential time integrators.
-    Advective term - 3rd order upwind scheme
-    Adaptive step size is implemented.
 """
 
 import numpy as np

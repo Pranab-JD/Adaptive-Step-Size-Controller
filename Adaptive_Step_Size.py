@@ -68,7 +68,7 @@ def Traditional_Controller(Method, u, dt_inp, p, error, tol):
 
 ################################################################################################
 
-def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
+def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_Nonpen):
     """
     Parameters
     ----------
@@ -104,15 +104,12 @@ def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1):
 
         return alpha, beta, lambd, delta
 
-    alpha, beta, lambd, delta = Non_penalized()
-    # alpha, beta, lambd, delta = Penalized()
-
-    # if Pen_Nonpen == 0:
-    #     alpha, beta, lambd, delta = Non_penalized()
-    # elif Pen_Nonpen == 1:
-    #     alpha, beta, lambd, delta = Penalized()
-    # else:
-    #     print('Error!! Check controller')
+    if Pen_Nonpen == 0:
+        alpha, beta, lambd, delta = Non_penalized()
+    elif Pen_Nonpen == 1:
+        alpha, beta, lambd, delta = Penalized()
+    else:
+        print('Error!! Check controller')
 
     Del = (np.log(cost_n) - np.log(cost_n_1))/(np.log(dt_n) - np.log(dt_n_1))
 

@@ -51,10 +51,10 @@ class Cost_Controller:
         self.A_dif = np.zeros((self.N, self.N))
 
         for ij in range(self.N):
-            self.A_adv[ij, int(ij + 2) % self.N] = -1
-            self.A_adv[ij, int(ij + 1) % self.N] =  6
-            self.A_adv[ij, ij % self.N]          = -3
-            self.A_adv[ij, int(ij - 1) % self.N] = -2
+            self.A_adv[ij, int(ij + 2) % self.N] = -1/6
+            self.A_adv[ij, int(ij + 1) % self.N] =  6/6
+            self.A_adv[ij, ij % self.N]          = -3/6
+            self.A_adv[ij, int(ij - 1) % self.N] = -2/6
 
             self.A_dif[ij, int(ij + 1) % self.N] =  1
             self.A_dif[ij, ij % self.N]          = -2

@@ -4,11 +4,8 @@ Created on Mon Oct 26 18:24:14 2020
 @author: Pranab JD
 
 Description:
-    This code solves the viscous Burgers' equation:
+    Viscous Burgers' equation:
     du/dt = d^2(u^2)/dx^2 + eta * du/dx (1D)
-    using different exponential time integrators.
-    Advective term - 3rd order upwind scheme
-    Adaptive step size is implemented.
 """
 
 import numpy as np
@@ -63,16 +60,16 @@ class Viscous_Burgers_1D(Cost_Controller):
         """
 
         # Eigen values (Advection)
-        eigen_min_adv = 0
-        eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
-        eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
-
-        ## c and gamma
-        c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
-        Gamma_real_adv = 0.25 * (eigen_min_adv - eigen_max_adv)
-        c_imag_adv = 0
-        Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
+        # eigen_min_adv = 0
+        # eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
+        # eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
+        # eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
+        #
+        # ## c and gamma
+        # c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
+        # Gamma_real_adv = 0.25 * (eigen_min_adv - eigen_max_adv)
+        # c_imag_adv = 0
+        # Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
 
         ############## --------------------- ##############
 

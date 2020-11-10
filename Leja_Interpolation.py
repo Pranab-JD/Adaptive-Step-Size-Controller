@@ -343,7 +343,7 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c, Gamma, phi_func, *A):
     y = nonlin_matrix_vector.copy()
     max_Leja_pts = len(coeffs)
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-4
+    poly_tol = 1e-3
     epsilon = 1e-7
     y_val = np.zeros((max_Leja_pts, len(u)))
 

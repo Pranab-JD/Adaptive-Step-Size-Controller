@@ -122,39 +122,7 @@ class Viscous_Burgers_2D_Adaptive_h:
 
     ##############################################################################
     
-    def Solution(self, u, dt):
-        
-        ## Leja points
-        Leja_X = Leja_Points()
-    
-        ############## --------------------- ##############
-        
-        ## Eigen values (Advection)
-        eigen_min_adv = 0
-        eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)    # Max real, imag eigen value
-        eigen_max_adv = eigen_max_adv * 1.2                                             # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.125                                         # Safety factor
-        
-        ## c and gamma
-        c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)
-        Gamma_real_adv = 0.25 * (eigen_max_adv - eigen_min_adv)
-        c_imag_adv = 0
-        Gamma_imag_adv = 0.25 * (eigen_imag_adv - (- eigen_imag_adv))
-        
-        ############## --------------------- ##############
-        
-        ### Matrix-vector function
-        f_u = self.A_adv.dot(self.u**2) + self.A_dif.dot(self.u)
-        
-        u_temp, its_method = EXPRB42(self.A_adv, 2, self.A_dif, 1, u, dt, Leja_X, c_imag_adv, Gamma_imag_adv)
-        
-        ############## --------------------- ##############
 
-        ## Update u
-        u = u_temp.copy()
-        
-        return u, dt, its_power + its_method + 2
-    
     ##############################################################################
         
     def run(self):
