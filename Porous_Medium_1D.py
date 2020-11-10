@@ -84,14 +84,15 @@ class Porous_Medium_1D(Cost_Controller):
 
         u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_dif, 2, self.A_adv, u, dt, c, Gamma, 0)
 
-        # u_ref, its_ref = RK4(self.A_adv, 1, self.A_dif, 2, u, dt)
-
         # u_sol, its_sol, u_ref, its_ref = RKF45(self.A_adv, 1, self.A_dif, 2, u, dt)
 
         ### ------------------------------------------------------ ###
 
-        ## No. of matrix-vector products
-        its_mat_vec = its_sol + its_ref + its_power
+        ### No. of matrix-vector products
+
+        ## its_sol included in its_ref
+        ## its_power = 0 if advection eigen values are used
+        its_mat_vec = its_ref + its_power
 
         return u_sol, u_ref, u, its_mat_vec
 

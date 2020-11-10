@@ -275,8 +275,6 @@ def EXPRB42(A_nl, m_nl, A_lin, u, dt, c, Gamma):
 
     """
 
-    ############## --------------------- ##############
-
     epsilon = 1e-7
 
     ### Linear operator
@@ -379,7 +377,7 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     u_3, its_3 = Leja_phi(u, 2*(Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl)
 
     u_exprb3 = u_exprb2 + (u_3 * dt)
-    
+
     # print(np.mean(abs(u_3 * dt)))
 
     return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a + its_3

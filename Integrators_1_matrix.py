@@ -68,7 +68,7 @@ def RK4(A_adv, m_adv, u, dt):
 
 ##############################################################################
 
-def RKF5(A_adv, m_adv, u, dt):
+def RKF45(A_adv, m_adv, u, dt):
     """
     Parameters
     ----------
@@ -415,17 +415,19 @@ def EXPRB43(A, m, u, dt, c, Gamma, Real_Imag_Leja):
     ### Matrix-vector function
     f_u = A.dot(u**m)
 
-    ### J(u) * u
-    Linear_u = (A.dot((u + (epsilon * u))**m) - f_u)/epsilon
-
-    ### F(u) = f(u) - (J(u) * u)
-    Nonlin_u = f_u - Linear_u
-
     ############## --------------------- ##############
 
     ### Internal stage 1
     a_n_f, its_a = Leja_phi(u, f_u, dt/2, c, Gamma, phi_1, A, m)
     a_n = u + a_n_f * dt/2
+
+    ############## --------------------- ##############
+
+    ### J(u) * u
+    Linear_u = (A.dot((u + (epsilon * u))**m) - f_u)/epsilon
+
+    ### F(u) = f(u) - (J(u) * u)
+    Nonlin_u = f_u - Linear_u
 
     ### J(u) * a
     Linear_a = (A.dot((u + (epsilon * a_n))**m) - f_u)/epsilon

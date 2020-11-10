@@ -30,7 +30,7 @@ System_2 = Viscous_Burgers_1D
 System_3 = Inviscid_Burgers_1D
 System_4 = Diffusion_Advection_1D
 
-class Run_Cost_Controller(System_2):
+class Run_Cost_Controller(System_1):
 
     def run_adaptive_h(self):
 
@@ -38,8 +38,8 @@ class Run_Cost_Controller(System_2):
         emax = '{:5.1e}'.format(self.error_tol)
         n_val = '{:3.0f}'.format(self.N)
         eta_val = '{:2.0f}'.format(self.eta)
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/1D/Viscous/Adaptive")
-        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/Penalized/tol " + str(emax) + \
+        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Porous Medium/1D/Adaptive")
+        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/Traditional/tol " + str(emax) + \
                                     "/EXPRB43/")
         path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val))
 
@@ -144,84 +144,84 @@ class Run_Cost_Controller(System_2):
 
             else:
 
-                # ### Traditional Controller
-                # u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
+                ### Traditional Controller
+                u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
 
-                # error = np.max(abs(u_ref - u_sol))
+                error = np.max(abs(u_ref - u_sol))
 
-                # if error > self.error_tol:
-                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
-                #                                                                             Method_order, error, self.error_tol)
-
-                # else:
-                #     dt_used = dt_trad
-                #     num_mv_trad = 0
-
-                #     ### Estimate of dt for next time step if error < tol in the 1st try
-                #     new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
-                #     dt_trad = 0.8 * new_dt          # Safety factor
-
-                # cost_trad = num_mv_sol + num_mv_trad
-                # cost_cont = 0
-                # trad_iter = trad_iter + 1
-
-                ############## --------------------- ##############
-
-                ### Cost controller ###
-                mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
-                dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
-                
-                dt_controller = Cost_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
-                
-                dt = min(dt_controller, dt_trad)
-                
-                ############## --------------------- ##############
-                
-                ### Solve with dt
-                u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt)
-                
-                ### Error
-                error = np.mean(abs(u_sol - u_ref))
-                
-                ############## --------------------- ##############
-                
                 if error > self.error_tol:
-                
-                    ### Traditional controller
                     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
                                                                                             Method_order, error, self.error_tol)
-                
-                    cost_trad = num_mv_sol + num_mv_trad
-                    cost_cont = 0
-                    trad_iter = trad_iter + 1
-                
+
                 else:
+                    dt_used = dt_trad
+                    num_mv_trad = 0
+
+                    ### Estimate of dt for next time step if error < tol in the 1st try
+                    new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
+                    dt_trad = 0.8 * new_dt          # Safety factor
+
+                cost_trad = num_mv_sol + num_mv_trad
+                cost_cont = 0
+                trad_iter = trad_iter + 1
+
+                ############## --------------------- ##############
+
+                # ### Cost controller ###
+                # mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
+                # dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
                 
-                    if dt == dt_trad:
+                # dt_controller = Cost_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1)
                 
-                        ### dt from traditional controller used; error < tolerance
-                        cost_trad = num_mv_sol
-                        cost_cont = 0
-                        trad_iter = trad_iter + 1
+                # dt = min(dt_controller, dt_trad)
                 
-                    elif dt == dt_controller:
+                # ############## --------------------- ##############
                 
-                        ### dt from cost controller used
-                        cost_cont = num_mv_sol
-                        cost_trad = 0
-                        cost_iter = cost_iter + 1
+                # ### Solve with dt
+                # u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt)
                 
-                    else:
-                        print('Error in selecting dt!! Unknown dt used!!!')
+                # ### Error
+                # error = np.mean(abs(u_sol - u_ref))
                 
-                    ############## --------------------- ##############
+                # ############## --------------------- ##############
                 
-                    ## dt used in this time step
-                    dt_used = dt
+                # if error > self.error_tol:
                 
-                    ### Estimate of dt for next time step using traditional controller ###
-                    new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
-                    dt_trad = 0.875 * new_dt          # Safety factor
+                #     ### Traditional controller
+                #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
+                #                                                                             Method_order, error, self.error_tol)
+                
+                #     cost_trad = num_mv_sol + num_mv_trad
+                #     cost_cont = 0
+                #     trad_iter = trad_iter + 1
+                
+                # else:
+                
+                #     if dt == dt_trad:
+                
+                #         ### dt from traditional controller used; error < tolerance
+                #         cost_trad = num_mv_sol
+                #         cost_cont = 0
+                #         trad_iter = trad_iter + 1
+                
+                #     elif dt == dt_controller:
+                
+                #         ### dt from cost controller used
+                #         cost_cont = num_mv_sol
+                #         cost_trad = 0
+                #         cost_iter = cost_iter + 1
+                
+                #     else:
+                #         print('Error in selecting dt!! Unknown dt used!!!')
+                
+                #     ############## --------------------- ##############
+                
+                #     ## dt used in this time step
+                #     dt_used = dt
+                
+                #     ### Estimate of dt for next time step using traditional controller ###
+                #     new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
+                #     dt_trad = 0.875 * new_dt          # Safety factor
 
             ############## --------------------- ##############
 
@@ -360,9 +360,9 @@ for ii in error_list_1:
     print('-----------------------------------------------------------')
     print('-----------------------------------------------------------')
 
-    N = 100
+    N = 700
     t_max = 1e-2
-    eta = 100
+    eta = 10
     error_tol = ii
 
     dim_1 = Run_Cost_Controller(N, t_max, eta, error_tol)

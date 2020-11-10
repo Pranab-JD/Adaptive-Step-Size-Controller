@@ -487,8 +487,8 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c, Gamma, phi_func, *A):
     y = nonlin_matrix_vector.copy()
     max_Leja_pts = len(coeffs)
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-8 * np.mean(abs(nonlin_matrix_vector))
-    epsilon = 1e-7 #/ np.mean(abs(nonlin_matrix_vector))
+    poly_tol = 1e-6
+    epsilon = 1e-7
     y_val = np.zeros((max_Leja_pts, len(u)), dtype = complex)
 
     scale_fact = 1/Gamma                                    # Re-scaling factor
@@ -524,7 +524,7 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c, Gamma, phi_func, *A):
             break
 
         ## To stop diverging
-        elif poly_vals[ii] > 1e11:
+        elif poly_vals[ii] > 1e13:
             return 20 * nonlin_matrix_vector, ii * len(A)
 
         else:
