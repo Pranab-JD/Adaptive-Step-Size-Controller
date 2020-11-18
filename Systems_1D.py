@@ -12,21 +12,21 @@ Description:
 import os
 import shutil
 import numpy as np
-from Porous_Medium_1D import *
-from Viscous_Burgers_1D import *
-from Inviscid_Burgers_1D import *
-from Diffusion_Advection_1D import *
-from Adaptive_Step_Size import *
 import matplotlib.pyplot as plt
+from Adaptive_Step_Size import *
+from Porous_Medium import Porous_Medium_1D
+from Viscous_Burgers import Viscous_Burgers_1D
+from Inviscid_Burgers import Inviscid_Burgers_1D
+# from Diffusion_Advection import Diffusion_Advection_1D
 
 ##############################################################################
 
 System_1 = Porous_Medium_1D
 System_2 = Viscous_Burgers_1D
 System_3 = Inviscid_Burgers_1D
-System_4 = Diffusion_Advection_1D
+# System_4 = Diffusion_Advection_1D
 
-Process = System_2
+Process = System_3
 
 class Run_1D_Systems(Process):
 
@@ -235,11 +235,11 @@ class Run_1D_Systems(Process):
             ############# --------------------- ##############
 
             ### Test plots
-            # plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            # plt.plot(self.X, u_sol, 'b.', label = 'Data')
-            # plt.legend()
-            # plt.pause(self.dt/2)
-            # plt.clf()
+            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
+            plt.plot(self.X, u_sol, 'b.', label = 'Data')
+            plt.legend()
+            plt.pause(self.dt/2)
+            plt.clf()
 
             ############## --------------------- ##############
 
@@ -271,15 +271,15 @@ class Run_1D_Systems(Process):
         ############# --------------------- ##############
 
         ### Plot dt vs time
-        # advCFL = np.ones(counter) * self.adv_cfl
-        # difCFL = np.ones(counter) * self.dif_cfl
+        advCFL = np.ones(counter) * self.adv_cfl
+        difCFL = np.ones(counter) * self.dif_cfl
 
-        # plt.figure()
-        # plt.loglog(time_arr, dt_temp, 'b.:', label = 'dt used')
-        # plt.loglog(time_arr, advCFL, 'r', label = 'Adv. CFL')
-        # plt.loglog(time_arr, difCFL, 'g', label = 'Diff. CFL')
-        # plt.legend()
-        # plt.show()
+        plt.figure()
+        plt.loglog(time_arr, dt_temp, 'b.:', label = 'dt used')
+        plt.loglog(time_arr, advCFL, 'r', label = 'Adv. CFL')
+        plt.loglog(time_arr, difCFL, 'g', label = 'Diff. CFL')
+        plt.legend()
+        plt.show()
 
     ##############################################################################
 

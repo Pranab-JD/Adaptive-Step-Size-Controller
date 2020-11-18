@@ -343,7 +343,7 @@ def real_Leja_phi(u, nonlin_matrix_vector, dt, c, Gamma, phi_func, *A):
     y = nonlin_matrix_vector.copy()
     max_Leja_pts = len(coeffs)
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-3
+    poly_tol = 1e-4
     epsilon = 1e-7
     y_val = np.zeros((max_Leja_pts, len(u)))
 
@@ -487,7 +487,7 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c, Gamma, phi_func, *A):
     y = nonlin_matrix_vector.copy()
     max_Leja_pts = len(coeffs)
     poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-6
+    poly_tol = 1e-4
     epsilon = 1e-7
     y_val = np.zeros((max_Leja_pts, len(u)), dtype = complex)
 
@@ -536,8 +536,8 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c, Gamma, phi_func, *A):
     ### ------------------------------------------------------------------- ###
 
     ### Choose polynomial terms up to the smallest term, ignore the rest
-    if poly_vals[1] == 0:                                                # poly_vals[1] = 0, no more terms needed
-        min_poly_val_x = 0
+    # if poly_vals[1] == 0:                                                # poly_vals[1] = 0, no more terms needed
+    #     min_poly_val_x = 0
 
     if np.argmin(poly_vals[np.nonzero(poly_vals)]) + 1 == 0:               # Tolerance reached
         min_poly_val_x = np.argmin(poly_vals[np.nonzero(poly_vals)])
