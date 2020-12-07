@@ -27,19 +27,19 @@ System_2 = Viscous_Burgers_2D
 System_3 = Inviscid_Burgers_2D
 # System_4 = Diffusion_Advection_2D
 
-Process = System_1
+Process = System_3
 
 class Run_2D_Systems(Process):
 
     def adaptive_h(self):
 
         ### Create directory
-        n_x = '{:3.0f}'.format(self.N_x); n_y = '{:3.0f}'.format(self.N_y)
+        n_x = '{:2.0f}'.format(self.N_x); n_y = '{:2.0f}'.format(self.N_y)
         eta_x = '{:2.0f}'.format(self.eta_x); eta_y = '{:2.0f}'.format(self.eta_y)
         emax = '{:5.1e}'.format(self.error_tol)
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/2D/Viscous/Adaptive")
+        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/2D/Inviscid/Adaptive")
         path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y) \
-                                    + "/Non Penalized/tol " + str(emax) + "/EXPRB43/")
+                                    + "/Penalized/tol " + str(emax) + "/EXPRB43/")
         path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y))
 
         if os.path.exists(path):
@@ -54,7 +54,7 @@ class Run_2D_Systems(Process):
         file_param.write('eta_y = %f' % self.eta_y + '\n')
         file_param.write('Adv. CFL time = %.5e' % self.adv_cfl + '\n')
         file_param.write('Diff. CFL time = %.5e' % self.dif_cfl + '\n')
-        file_param.write('Simulation time = %e' % self.tmax + '\n')
+        file_param.write('Simulation time = %e' % self.tmax)
         file_param.close()
 
         ### Create files
@@ -86,7 +86,7 @@ class Run_2D_Systems(Process):
                 ### Traditional Controller
                 u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
 
-                error = np.max(abs(u_sol - u_ref))
+                error = np.mean(abs(u_sol - u_ref))
 
                 if error > self.error_tol:
                     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
@@ -114,7 +114,7 @@ class Run_2D_Systems(Process):
                 u_sol, u_ref, u, num_mv_final = self.Solution(self.u, dt_final)
 
                 ### Error
-                error = np.max(abs(u_sol - u_ref))
+                error = np.mean(abs(u_sol - u_ref))
 
                 ############## --------------------- ##############
 
@@ -143,7 +143,7 @@ class Run_2D_Systems(Process):
                 # ### Traditional Controller ###
                 # u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, dt_trad)
 
-                # error = np.max(abs(u_ref - u_sol))
+                # error = np.mean(abs(u_ref - u_sol))
 
                 # if error > self.error_tol:
                 #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
@@ -167,7 +167,7 @@ class Run_2D_Systems(Process):
                 mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
                 dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
                 
-                dt_controller = Cost_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1, 0)
+                dt_controller = Cost_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1, 1)
                 
                 dt = min(dt_controller, dt_trad)
                 
@@ -216,8 +216,8 @@ class Run_2D_Systems(Process):
                     dt_used = dt
                 
                     ### Estimate of dt for next time step using traditional controller ###
-                    new_dt = dt * (self.error_tol/error)**(1/(Method_order + 1))
-                    dt_trad = 0.875 * new_dt          # Safety factor
+                    new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
+                    dt_trad = 0.8 * new_dt          # Safety factor
 
             ############## --------------------- ##############
 
@@ -240,14 +240,14 @@ class Run_2D_Systems(Process):
 
             ############# --------------------- ##############
 
-            ### Test plots
-            plt.imshow(self.u.reshape(self.N_y, self.N_x), cmap = cm.plasma, origin = 'lower', extent = [0, 1, 0, 1])
-            plt.pause(self.dt)
+            # ### Test plots
+            # plt.imshow(self.u.reshape(self.N_y, self.N_x), cmap = cm.plasma, origin = 'lower', extent = [0, 1, 0, 1])
+            # plt.pause(self.dt)
 
             ############## --------------------- ##############
 
-        ### Reshape u into 2D
-        self.u = self.u.reshape(self.N_y, self.N_x)
+        # ### Reshape u into 2D
+        # self.u = self.u.reshape(self.N_y, self.N_x)
 
         print('Cost controller used in ', cost_iter, 'time steps')
         print('Traditional controller used in ', trad_iter, 'time steps')
@@ -276,16 +276,16 @@ class Run_2D_Systems(Process):
 
         ############# --------------------- ##############
 
-        ### Plot dt vs time
-        advCFL = np.ones(counter) * self.adv_cfl
-        difCFL = np.ones(counter) * self.dif_cfl
+        # ### Plot dt vs time
+        # advCFL = np.ones(counter) * self.adv_cfl
+        # difCFL = np.ones(counter) * self.dif_cfl
 
-        plt.figure()
-        plt.loglog(time_arr, dt_temp, 'b.:', label = 'dt used')
-        plt.loglog(time_arr, advCFL, 'r', label = 'Adv. CFL')
-        plt.loglog(time_arr, difCFL, 'g', label = 'Diff. CFL')
-        plt.legend()
-        plt.show()
+        # plt.figure()
+        # plt.loglog(time_arr, dt_temp, 'b.:', label = 'dt used')
+        # plt.loglog(time_arr, advCFL, 'r', label = 'Adv. CFL')
+        # plt.loglog(time_arr, difCFL, 'g', label = 'Diff. CFL')
+        # plt.legend()
+        # plt.show()
 
     ##############################################################################
 

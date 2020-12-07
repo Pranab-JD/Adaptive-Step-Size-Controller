@@ -167,10 +167,10 @@ def real_Leja_exp(A, u, dt, c_real, Gamma_real):
     poly = coeffs[0] * poly
 
     ## a_1, a_2 .... a_n terms
-    max_Leja_pts = int(len(coeffs)/5)
+    max_Leja_pts = 100
     y = u.copy()
-    poly_vals = np.zeros(max_Leja_pts)
-    poly_tol = 1e-7
+    # poly_vals = np.zeros(max_Leja_pts)
+    # poly_tol = 1e-5
     scale_fact = 1/Gamma_real                                    # Re-scaling factor
 
     for ii in range(1, max_Leja_pts):
@@ -184,16 +184,9 @@ def real_Leja_exp(A, u, dt, c_real, Gamma_real):
         y = y * shift_fact
         y = y + scale_fact * Jacobian_function
 
-        poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
+        # poly_vals[ii] = (sum(abs(y)**2)/len(y))**0.5 * abs(coeffs[ii])
 
         poly = poly + coeffs[ii] * y
-
-        if poly_vals[ii] < poly_tol:
-            print('No. of Leja points used (real exp) = ', ii)
-            break
-
-        if ii >= max_Leja_pts - 1:
-            print('ERROR: max number of Leja iterations reached (real exp)', ii)
 
     ## Solution
     u_real = poly.copy()
@@ -531,7 +524,7 @@ def imag_Leja_phi(u, nonlin_matrix_vector, dt, c, Gamma, phi_func, *A):
             y_val[ii, :] = coeffs[ii] * y
 
         if ii >= max_Leja_pts - 1:
-            print('ERROR: max number of Leja iterations reached (real phi)', ii)
+            print('ERROR: max number of Leja iterations reached (imag phi)', ii)
 
     ### ------------------------------------------------------------------- ###
 

@@ -14,6 +14,7 @@ import os
 import shutil
 import Systems_1D
 import Systems_2D
+import Systems_linear
 
 from datetime import datetime
 
@@ -23,10 +24,10 @@ startTime = datetime.now()
 
 ### Tolerances ###
 error_list_1 = [1e-4, 5e-5, 1e-5, 5e-6, 1e-6, 5e-7, 1e-7, 5e-8, 1e-8]
-error_list_2 = [1e-5]
+error_list_2 = [1e-7]
 
 ## Assign values for N, tmax, tol, and eta
-for ii in error_list_2:
+for ii in error_list_1:
 
     tolTime = datetime.now()
 
@@ -37,27 +38,27 @@ for ii in error_list_2:
 
     ### 1D ###
 
-    N = 100
-    t_max = 1e-2
-    eta = 10
-    error_tol = ii
+    # N = 700
+    # t_max = 0.2
+    # eta = 50
+    # error_tol = ii
 
-    run_1D = Systems_1D.Run_1D_Systems(N, t_max, eta, error_tol)
+    # run_1D = Systems_linear.Run_1D_Systems(N, t_max, eta, error_tol)
 
     ### ------------------------------------------------------------------- ###
 
     ### 2D ###
 
-    ## 1/(N_x - 1) * eta_x = 1/(N_y - 1) * eta_y for equal numerical diffusion along X and Y
+    ## 1/N_x * eta_x = 1/N_y * eta_y for equal numerical diffusion along X and Y
 
-    N_x = 150
+    N_x = 25
     N_y = 100
-    t_max = 1e-3
-    eta_x = 150
-    eta_y = 100
+    t_max = 0.2
+    eta_x = 10
+    eta_y = 40
     error_tol = ii
 
-    run_2D = Systems_2D.Run_2D_Systems(N_x, N_y, t_max, eta_x, eta_y, error_tol)
+    run_2D = Systems_linear.Run_2D_Systems(N_x, N_y, t_max, eta_x, eta_y, error_tol)
 
     ### ------------------------------------------------------------------- ###
 

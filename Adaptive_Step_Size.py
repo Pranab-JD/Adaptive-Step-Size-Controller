@@ -7,6 +7,7 @@ Description: -
         Consists of different adaptive step size methods
 """
 
+
 import numpy as np
 
 ################################################################################################
@@ -49,7 +50,7 @@ def Traditional_Controller(Method, u, dt_inp, p, error, tol):
 
         ## Re-calculate u_ref, u_sol, and error
         u_sol, u_ref, u, its_method = Method(u, dt)
-        error = np.max(abs(u_ref - u_sol))
+        error = np.mean(abs(u_ref - u_sol))
 
         ## Count of matrix-vector products
         counts = counts + its_method

@@ -85,11 +85,12 @@ class Viscous_Burgers_1D(Cost_Controller_1D):
 
         ### ------------------------------------------------------ ###
 
-        # u_sol, its_sol, u_ref, its_ref = EXPRB32(self.A_adv, 2, self.A_dif, u, dt, c, Gamma, 0)
+        # u_ref_1, its_ref_1 = EXPRB43(self.A_adv, 2, self.A_dif, u, dt/2, c, Gamma, 0)[0:2]
+        # u_ref, its_ref_2 = EXPRB43(self.A_adv, 2, self.A_dif, u_ref_1, dt/2, c, Gamma, 0)[0:2]
 
-        u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_adv, 2, self.A_dif, u, dt, c, Gamma, 0)
+        # u_sol, its_sol = EXPRB43(self.A_adv, 2, self.A_dif, u, dt, c, Gamma, 0)[0:2]
 
-        # u_sol, its_sol, u_ref, its_ref = RKF45(self.A_adv, 2, self.A_dif, 1, u, dt)
+        u_sol, its_sol, u_ref, its_ref = RKF45(self.A_adv, 2, self.A_dif, 1, u, dt)
 
         ### ------------------------------------------------------ ###
 
