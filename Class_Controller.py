@@ -41,7 +41,7 @@ class Cost_Controller_1D:
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
         print('Tolerance:', self.error_tol)
-        self.dt = 2 * min(self.adv_cfl, self.dif_cfl)    # N * CFL condition
+        self.dt = 0.9 * min(self.adv_cfl, self.dif_cfl)    # N * CFL condition
         self.R = self.eta/self.dx
         self.F = 1/self.dx**2                            # Fourier mesh number
 
@@ -97,7 +97,7 @@ class Cost_Controller_2D:
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
         print('Tolerance:', self.error_tol)
-        self.dt = 1 * min(self.adv_cfl, self.dif_cfl)     # N * CFL condition
+        self.dt = 5 * min(self.adv_cfl, self.dif_cfl)     # N * CFL condition
         self.Rx = self.eta_x/self.dx
         self.Ry = self.eta_y/self.dy
         self.Fx = 1/self.dx**2                            # Fourier mesh number

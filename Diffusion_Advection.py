@@ -62,12 +62,13 @@ class Diffusion_Advection_1D(Cost_Controller_1D):
 
         u_sol, its_sol = real_Leja_exp(self.A, u, dt, c_real, Gamma_real)
         
-        u_ref_1, its_ref_1 = real_Leja_exp(self.A, u, dt/2, c_real, Gamma_real)
-        u_ref, its_ref_2 = real_Leja_exp(self.A, u_ref_1, dt/2, c_real, Gamma_real)
+        ### Richardson Extrapolation
+        # u_ref_1, its_ref_1 = real_Leja_exp(self.A, u, dt/2, c_real, Gamma_real)
+        # u_ref, its_ref_2 = real_Leja_exp(self.A, u_ref_1, dt/2, c_real, Gamma_real)
         
         # u_sol, its_sol = imag_Leja_exp(self.A, u, dt, c_imag, Gamma_imag)
 
-        return u_sol, u_ref, u, its_sol + its_ref_1 + its_ref_2
+        return u_sol, u, its_sol
     
 ##############################################################################
     
@@ -116,11 +117,11 @@ class Diffusion_Advection_2D(Cost_Controller_2D):
 
         u_sol, its_sol = real_Leja_exp(self.A, u, dt, c_real, Gamma_real)
         
-        u_ref_1, its_ref_1 = real_Leja_exp(self.A, u, dt/2, c_real, Gamma_real)
-        u_ref, its_ref_2 = real_Leja_exp(self.A, u_ref_1, dt/2, c_real, Gamma_real)
+        # u_ref_1, its_ref_1 = real_Leja_exp(self.A, u, dt/2, c_real, Gamma_real)
+        # u_ref, its_ref_2 = real_Leja_exp(self.A, u_ref_1, dt/2, c_real, Gamma_real)
         
         # u_sol, its_sol = imag_Leja_exp(self.A, u, dt, c_imag, Gamma_imag)
 
-        return u_sol, u_ref, u, its_sol + its_ref_1 + its_ref_2
+        return u_sol, u, its_sol
     
 ##############################################################################

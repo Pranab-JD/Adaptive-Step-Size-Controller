@@ -18,14 +18,14 @@ from Adaptive_Step_Size import *
 from Porous_Medium import Porous_Medium_2D
 from Viscous_Burgers import Viscous_Burgers_2D
 from Inviscid_Burgers import Inviscid_Burgers_2D
-# from Diffusion_Advection_2D import *
+from Diffusion_Advection import Diffusion_Advection_2D
 
 ##############################################################################
 
 System_1 = Porous_Medium_2D
 System_2 = Viscous_Burgers_2D
 System_3 = Inviscid_Burgers_2D
-# System_4 = Diffusion_Advection_2D
+System_4 = Diffusion_Advection_2D
 
 Process = System_3
 
@@ -37,7 +37,7 @@ class Run_2D_Systems(Process):
         n_x = '{:2.0f}'.format(self.N_x); n_y = '{:2.0f}'.format(self.N_y)
         eta_x = '{:2.0f}'.format(self.eta_x); eta_y = '{:2.0f}'.format(self.eta_y)
         emax = '{:5.1e}'.format(self.error_tol)
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/2D/Inviscid/Adaptive")
+        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/2D/Inviscid/Adaptive/t_0.0325")
         path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y) \
                                     + "/Penalized/tol " + str(emax) + "/EXPRB43/")
         path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y))
@@ -167,6 +167,7 @@ class Run_2D_Systems(Process):
                 mat_vec_prod_n = mat_vec_prod[counter - 1]; mat_vec_prod_n_1 = mat_vec_prod[counter - 2]
                 dt_temp_n = dt_temp[counter - 1]; dt_temp_n_1 = dt_temp[counter - 2]
                 
+                ### 0 = Non-penalized; 1 = Penalized
                 dt_controller = Cost_Controller(mat_vec_prod_n, dt_temp_n, mat_vec_prod_n_1, dt_temp_n_1, 1)
                 
                 dt = min(dt_controller, dt_trad)
@@ -263,13 +264,10 @@ class Run_2D_Systems(Process):
         file_res.write('Number of matrix-vector products = %d' % count_mv)
         file_res.close()
 
-        ## Write final data to files
-        file_final_sol = open(path + "Final_data_sol.txt", 'w+')
-        file_final_ref = open(path + "Final_data_ref.txt", 'w+')
-        np.savetxt(file_final_sol, u_sol.reshape(self.N_y, self.N_x), fmt = '%.25f')
-        np.savetxt(file_final_ref, self.u.reshape(self.N_y, self.N_x), fmt = '%.25f')
-        file_final_sol.close()
-        file_final_ref.close()
+        ### Write final data to files
+        file_final = open(path + "Final_data.txt", 'w+')
+        np.savetxt(file_final, u_ref.reshape(self.N_y, self.N_x), fmt = '%.25f')
+        file_final.close()
         
         ### Close files
         file_dt.close()
@@ -289,7 +287,7 @@ class Run_2D_Systems(Process):
 
     ##############################################################################
 
-    def run_constant_h(self):
+    def constant_h(self):
 
         time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
@@ -298,14 +296,17 @@ class Run_2D_Systems(Process):
         ############## --------------------- ##############
 
         ### Create directory
-        n_val = '{:3.0f}'.format(self.N)
-        eta_val = '{:2.0f}'.format(self.eta)
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/" + str(Process) + "/Constant")
-        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/EXPRB43/")
+        # n_val = '{:3.0f}'.format(self.N)
+        # eta_val = '{:2.0f}'.format(self.eta)
+        # direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/" + str(Process) + "/Constant")
+        # path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/EXPRB43/")
 
-        if os.path.exists(path):
-            shutil.rmtree(path)                     # remove previous directory with same name
-        os.makedirs(path, 0o777)                    # create directory with access rights
+        # if os.path.exists(path):
+        #     shutil.rmtree(path)                     # remove previous directory with same name
+        # os.makedirs(path, 0o777)                    # create directory with access rights
+        
+        ## Reshape into 1D
+        self.u = self.u.reshape(self.N_x * self.N_y)
 
         ############## --------------------- ##############
 
@@ -322,7 +323,7 @@ class Run_2D_Systems(Process):
                     print('Final step size:', self.dt)
 
 
-            u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, self.dt)
+            u_sol, u, num_mv_sol = self.Solution(self.u, self.dt)
 
             # u_ref, num_mv_sol = RK2(self.A_adv, 2, self.u, self.dt)
 
@@ -336,21 +337,17 @@ class Run_2D_Systems(Process):
             ############# --------------------- ##############
 
             ### Test plots
-            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            plt.plot(self.X, u_sol, 'b.', label = 'Data')
-            plt.legend()
-            plt.pause(0.5)
-            plt.clf()
+            plt.imshow(self.u.reshape(self.N_y, self.N_x), cmap = cm.plasma, origin = 'lower', extent = [0, 1, 0, 1])
+            plt.pause(self.dt)
 
             ############## --------------------- ##############
 
         print('Number of time steps = ', counter)
         print('Total number of matrix-vector products = ', count_mv)
 
-        ### Write final data to separate file
-        file_final = open(path + "Final_data.txt", 'w+')
-        file_final.write(' '.join(map(str, self.u)) % self.u + '\n')
-        file_final.close()
-        file_final.close()
+        # ### Write final data to files
+        # file_final = open(path + "Final_data.txt", 'w+')
+        # np.savetxt(file_final, u_sol.reshape(self.N_y, self.N_x), fmt = '%.25f')
+        # file_final.close()
 
 ##############################################################################

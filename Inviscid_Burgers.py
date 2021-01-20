@@ -35,7 +35,7 @@ class Inviscid_Burgers_1D(Cost_Controller_1D):
 
     def initialize_parameters(self):
         super().initialize_parameters()
-        self.dt = 2 * self.adv_cfl      # N * CFL condition
+        self.dt = 1 * self.adv_cfl      # N * CFL condition
 
     def initialize_matrices(self):
         super().initialize_matrices()
@@ -62,7 +62,7 @@ class Inviscid_Burgers_1D(Cost_Controller_1D):
         eigen_min_adv = 0
         eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
         eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
-        eigen_imag_adv = eigen_imag_adv * 1.25                                         # Safety factor
+        eigen_imag_adv = eigen_imag_adv * 1.125                                         # Safety factor
 
         ## c and gamma
         c_real_adv = 0.5 * (eigen_max_adv + eigen_min_adv)

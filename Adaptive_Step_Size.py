@@ -17,10 +17,10 @@ def Traditional_Controller(Method, u, dt_inp, p, error, tol):
     Parameters
     ----------
     Method              : Solution using desired integration scheme (u_sol, u_ref, u, num_mv)
-    p                   : Order of Method
-    error               : Initial error (> tol)
     u                   : 1D vector u
     dt_inp              : dt input
+    p                   : Order of Method
+    error               : Initial error (> tol)
     tol                 : Maximum tolerance
 
     Returns
