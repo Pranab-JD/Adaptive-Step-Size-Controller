@@ -69,7 +69,7 @@ def Traditional_Controller(Method, u, dt_inp, p, error, tol):
 
 ################################################################################################
 
-def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_Nonpen):
+def Cost_Controller_2N(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_Nonpen):
     """
     Parameters
     ----------
@@ -128,3 +128,4 @@ def Cost_Controller(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_Nonpen
     return dt
 
 ################################################################################################
+

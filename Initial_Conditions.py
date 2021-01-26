@@ -79,5 +79,4 @@ plt.tick_params(axis = 'both', which = 'minor', labelsize = 12)
 plt.tight_layout()
 #plt.savefig('./Initial Conditions/Por_2D.eps')
 
-	
 ###################################################################################################

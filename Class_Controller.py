@@ -41,9 +41,9 @@ class Cost_Controller_1D:
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
         print('Tolerance:', self.error_tol)
-        self.dt = 0.9 * min(self.adv_cfl, self.dif_cfl)    # N * CFL condition
+        self.dt = 0.9 * min(self.adv_cfl, self.dif_cfl)     # N * CFL condition
         self.R = self.eta/self.dx
-        self.F = 1/self.dx**2                            # Fourier mesh number
+        self.F = 1/self.dx**2                               # Fourier mesh number
 
     ### Operator matrices
     def initialize_matrices(self):

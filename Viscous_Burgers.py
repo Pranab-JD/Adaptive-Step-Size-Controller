@@ -62,7 +62,7 @@ class Viscous_Burgers_1D(Cost_Controller_1D):
 
         """
 
-        # Eigen values (Advection)
+        ## Eigen values (Advection)
         # eigen_min_adv = 0
         # eigen_max_adv, eigen_imag_adv, its_power = Power_iteration(self.A_adv, u, 2)   # Max real, imag eigen value
         # eigen_max_adv = eigen_max_adv * 1.25                                           # Safety factor
@@ -85,12 +85,16 @@ class Viscous_Burgers_1D(Cost_Controller_1D):
 
         ### ------------------------------------------------------ ###
 
+        ### Richardson Extrapolation (with 3rd order solution)
         # u_ref_1, its_ref_1 = EXPRB43(self.A_adv, 2, self.A_dif, u, dt/2, c, Gamma, 0)[0:2]
         # u_ref, its_ref_2 = EXPRB43(self.A_adv, 2, self.A_dif, u_ref_1, dt/2, c, Gamma, 0)[0:2]
-
         # u_sol, its_sol = EXPRB43(self.A_adv, 2, self.A_dif, u, dt, c, Gamma, 0)[0:2]
+        
+        ### Embedded EXPRB43
+        u_sol, its_sol, u_ref, its_ref = EXPRB43(self.A_adv, 2, self.A_dif, u, dt, c, Gamma, 0)
 
-        u_sol, its_sol, u_ref, its_ref = RKF45(self.A_adv, 2, self.A_dif, 1, u, dt)
+        ### Embedded RKF45
+        # u_sol, its_sol, u_ref, its_ref = RKF45(self.A_adv, 2, self.A_dif, 1, u, dt)
 
         ### ------------------------------------------------------ ###
 

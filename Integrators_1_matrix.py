@@ -97,167 +97,47 @@ def RKF45(A_adv, m_adv, u, dt):
 
     return u_rkf4, 5, u_rkf5, 6
 
-##############################################################################
+################################################################################################
+
+### Exponential Integrators
 
 ### ETD ###
 
-def ETD(A_adv, m_adv, u, dt, c, Gamma):
+def ETD(A_adv, m_adv, u, dt, c, Gamma, Real_Imag_Leja):
     """
     Parameters
     ----------
-    A           : Matrix (A)
-    m           : Index of u (u^m)
-    u           : 1D vector u (Input)
-    dt          : dt
-    c, Gamma    : Parameters for Leja extrapolation
+    A               : Matrix (A)
+    m               : Index of u (u^m)
+    u               : 1D vector u (Input)
+    dt              : dt
+    c, Gamma        : Parameters for Leja extrapolation
+    Real_Imag_Leja  : 0 - Real, 1 - Imag
 
     Returns
     -------
-    u_exprb43   : 1D vector u (output) after time dt (1st or 2nd order)
-    mat_vec_num : # of matrix-vector products
+    u_etd           : 1D vector u (output) after time dt (2nd order)
+    mat_vec_num     : # of matrix-vector products
 
     """
 
-    epsilon = 1e-7
+    ## Use either Real Leja or imaginary Leja
+    if Real_Imag_Leja == 0:
+        Leja_phi = real_Leja_phi
+    elif Real_Imag_Leja == 1:
+        Leja_phi = imag_Leja_phi
+    else:
+        print('Error in choosing Real/Imag Leja!!')
 
-    ############## --------------------- ##############
-
-    ### Matrix-vector function
+    ### RHS of PDE at u
     f_u = A_adv.dot(u**m_adv)
+    
+    u_sol, mat_vec_num = Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
 
-    ### J(u) * u
-    Linear_u = (A_adv.dot((u + (epsilon * u))**m_adv) - f_u)/epsilon
-
-    ### F(u) = f(u) - (J(u) * u)
-    Nonlin_u = f_u - Linear_u
-
-    ############## --------------------- ##############
-
-    def Real_Leja():
-
-        ### Solution
-        u_lin, its_lin = real_Leja_exp(A_adv, m_adv, u, u, dt, Leja_X, c, Gamma)
-        u_nl, its_nl = real_Leja_phi(A_adv, m_adv, u, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
-        u_nl = u_nl * dt
-
-        return u_lin, u_nl, its_lin + its_nl + 2
-
-    ############## --------------------- ##############
-
-    def Imag_Leja():
-
-        ### Solution
-        u_lin, its_lin = imag_Leja_exp(A_adv, m_adv, u, u, dt, Leja_X, c, Gamma)
-        u_nl, its_nl = imag_Leja_phi(A_adv, m_adv, u, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
-        u_nl = u_nl * dt
-
-        return u_lin, u_nl, its_lin + its_nl + 2
-
-    ############## --------------------- ##############
-
-    # u_lin, u_nl, mat_vec_num = Real_Leja()
-    u_lin, u_nl, mat_vec_num = Imag_Leja()
-
-    ### ETD1 Solution ###
-    u_etd = u_lin + u_nl
+    ### ETD1 Solution
+    u_etd = u_sol * dt
 
     return u_etd, mat_vec_num
-
-##############################################################################
-
-### ETDRK2 ###
-
-def ETDRK2(A_adv, u, dt, c, Gamma):
-    """
-    Parameters
-    ----------
-    A           : Matrix (A)
-    m           : Index of u (u^m)
-    u           : 1D vector u (Input)
-    dt          : dt
-    c, Gamma    : Parameters for Leja extrapolation
-
-    Returns
-    -------
-    u_exprb43   : 1D vector u (output) after time dt (2nd order)
-    mat_vec_num : # of matrix-vector products
-
-    """
-
-    epsilon = 1e-12
-
-    ############## --------------------- ##############
-
-    ### Matrix-vector function
-    f_u = A_adv.dot(u**2)
-
-    ### J(u) * u
-    Linear_u = (A_adv.dot((u + (epsilon * u))**2) - f_u)/epsilon
-
-    ### F(u) = f(u) - (J(u) * u)
-    Nonlin_u = f_u - Linear_u
-
-    ############## --------------------- ##############
-
-    def Real_Leja():
-
-        ### Solution
-        u_lin, its_lin = real_Leja_exp(A_adv, u, 2, u, dt, Leja_X, c, Gamma)
-        u_nl_1, its_nl_1 = real_Leja_phi(A_adv, u, 2, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
-        u_nl_1 = u_nl_1 * dt
-
-        a_n = u_lin + u_nl_1
-
-        ############## --------------------- ##############
-
-        ### RK2 ###
-        ### J(u) * a
-        Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) - f_u)/epsilon
-
-        ### F(a) = f(a) - (J(u) * a)
-        Nonlin_a = A_adv.dot(a_n**2) - Linear_a
-
-        ## Nonlinear Term
-        u_nl_2, its_nl_2 = real_Leja_phi(A_adv, u, 2, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
-        u_nl_2 = u_nl_2 * dt
-
-        return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 4
-
-    ############## --------------------- ##############
-
-    def Imag_Leja():
-
-        ### Solution
-        u_lin, its_lin = imag_Leja_exp(A_adv, u, 2, u, dt, Leja_X, c, Gamma)
-        u_nl_1, its_nl_1 = imag_Leja_phi(A_adv, u, 2, Nonlin_u, dt, Leja_X, c, Gamma, phi_1)
-        u_nl_1 = u_nl_1 * dt
-
-        a_n = u_lin + u_nl_1
-
-        ############## --------------------- ##############
-
-        ### RK2 ###
-        ### J(u) * a
-        Linear_a = (A_adv.dot((u + (epsilon * a_n))**2) - f_u)/epsilon
-
-        ### F(a) = f(a) - (J(u) * a)
-        Nonlin_a = A_adv.dot(a_n**2) - Linear_a
-
-        ## Nonlinear Term
-        u_nl_2, its_nl_2 = imag_Leja_phi(A_adv, u, 2, (Nonlin_a - Nonlin_u), dt, Leja_X, c, Gamma, phi_2)
-        u_nl_2 = u_nl_2 * dt
-
-        return a_n, u_nl_2, its_lin + its_nl_1 + its_nl_2 + 4
-
-    ############## --------------------- ##############
-
-    # a_n, u_nl_2, mat_vec_num = Real_Leja()
-    a_n, u_nl_2, mat_vec_num = Imag_Leja()
-
-    ### ETDRK2 Solution ###
-    u_etdrk2 = a_n + u_nl_2
-
-    return u_etdrk2, mat_vec_num
 
 ##############################################################################
 
@@ -291,13 +171,13 @@ def EXPRB42(A_adv, m_adv, u, dt, c, Gamma, Real_Imag_Leja):
 
     epsilon = 1e-7
 
-    ############## --------------------- ##############
-
-    ### Matrix-vector function
+    ### RHS of PDE at u
     f_u = A_adv.dot(u**m_adv)
 
-    a_n_f, its_a = Leja_phi(u, f_u, 3*dt/4, c, Gamma, phi_1, A_adv, m_adv)
+    ############## --------------------- ##############
 
+    ### Internal stage 1
+    a_n_f, its_a = Leja_phi(u, f_u, 3*dt/4, c, Gamma, phi_1, A_adv, m_adv)
     a_n = u + a_n_f * 3*dt/4
 
     ############## --------------------- ##############
@@ -319,6 +199,7 @@ def EXPRB42(A_adv, m_adv, u, dt, c, Gamma, Real_Imag_Leja):
     u_1, its_1 = Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
     u_nl_3, its_3 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv)
 
+    ### 4th order solution
     u_exprb42 = u + (u_1 * dt) + (u_nl_3 * 32*dt/9)
 
     return u_exprb42, 4 + its_a + its_1 + its_3
@@ -338,8 +219,10 @@ def EXPRB32(A_adv, m_adv, u, dt, c, Gamma, Real_Imag_Leja):
 
     Returns
     -------
-    u_exprb43       : 1D vector u (output) after time dt (2nd and 3rd order)
-    mat_vec_num     : # of matrix-vector products
+    u_exprb2        : 1D vector u (output) after time dt (2nd order)
+    1 + its_a       : # of matrix-vector products for 2nd order solution
+    u_exprb3        : 1D vector u (output) after time dt (3rd order)
+    5+its_a+its_3   : # of matrix-vector products for 3rd order solution
 
     """
 
@@ -358,8 +241,7 @@ def EXPRB32(A_adv, m_adv, u, dt, c, Gamma, Real_Imag_Leja):
 
     ############## --------------------- ##############
 
-    ### Internal stage 1; 2nd order solution
-
+    ### Internal stage 1 (2nd order solution)
     a_n_f, its_a = Leja_phi(u, f_u, dt, c, Gamma, phi_1, A_adv, m_adv)
     a_n = u + (a_n_f * dt)
 
@@ -381,12 +263,12 @@ def EXPRB32(A_adv, m_adv, u, dt, c, Gamma, Real_Imag_Leja):
 
     ############## --------------------- ##############
 
-    ### 3rd order solution
     u_3, its_3 = Leja_phi(u, 2*(Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_adv, m_adv)
 
+    ### 3rd order solution
     u_exprb3 = u_exprb2 + (u_3 * dt)
 
-    return u_exprb2, 2 + its_a, u_exprb3, 4 + its_a + its_3
+    return u_exprb2, 1 + its_a, u_exprb3, 5 + its_a + its_3
 
 ##############################################################################
 
@@ -405,8 +287,10 @@ def EXPRB43(A, m, u, dt, c, Gamma, Real_Imag_Leja):
 
     Returns
     -------
-    u_exprb43       : 1D vector u (output) after time dt (3rd and 4th order)
-    mat_vec_num     : # of matrix-vector products
+    u_exprb3        : 1D vector u (output) after time dt (3rd order)
+    6 + its_a + ... : # of matrix-vector products for 3rd order solution
+    u_exprb4        : 1D vector u (output) after time dt (4th order)
+    6 + its_a + ... : # of matrix-vector products for 4th order solution
 
     """
 

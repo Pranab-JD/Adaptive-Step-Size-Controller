@@ -38,9 +38,9 @@ for ii in error_list_3:
 
     ### 1D ###
 
-    N = 700
-    t_max = 0.0325
-    eta = 100
+    N = 100
+    t_max = 0.01
+    eta = 10
     error_tol = ii
 
     run_1D = Systems_1D.Run_1D_Systems(N, t_max, eta, error_tol)
