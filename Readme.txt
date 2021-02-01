@@ -1,9 +1,8 @@
 Important points to be noted: -
 
-1. Order of the method is defined in Systems_1D.py and System_2D.py. Needs to changed in accordance with the method used. By default, it is set to 3.
+1. Order of the method is defined in Systems_1D.py and System_2D.py. Needs to changed in accordance with the method used. 
+By default, it is set to 3.
 
 2. If eigen values from the linear matrix operator is used, 'its_power' is not needed (= 0) in 'self.Solution'.
 
-3. For inviscid Burgers' equation, choose initial value of dt = 2 * self.adv_cfl.
-
-4. For embedded methods, 'its_sol' is already included in 'its_ref'.
+3. For embedded methods, 'its_sol' is already included in 'its_ref'.

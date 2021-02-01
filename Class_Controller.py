@@ -51,11 +51,13 @@ class Cost_Controller_1D:
         self.A_dif = np.zeros((self.N, self.N))
 
         for ij in range(self.N):
+            ## 3rd order upwind 
             self.A_adv[ij, int(ij + 2) % self.N] = -1/6
             self.A_adv[ij, int(ij + 1) % self.N] =  6/6
             self.A_adv[ij, ij % self.N]          = -3/6
             self.A_adv[ij, int(ij - 1) % self.N] = -2/6
 
+            ## 2nd order centered difference
             self.A_dif[ij, int(ij + 1) % self.N] =  1
             self.A_dif[ij, ij % self.N]          = -2
             self.A_dif[ij, int(ij - 1) % self.N] =  1
@@ -97,7 +99,7 @@ class Cost_Controller_2D:
         print('Advection CFL: ', self.adv_cfl)
         print('Diffusion CFL: ', self.dif_cfl)
         print('Tolerance:', self.error_tol)
-        self.dt = 5 * min(self.adv_cfl, self.dif_cfl)     # N * CFL condition
+        self.dt = 0.9 * min(self.adv_cfl, self.dif_cfl)     # N * CFL condition
         self.Rx = self.eta_x/self.dx
         self.Ry = self.eta_y/self.dy
         self.Fx = 1/self.dx**2                            # Fourier mesh number
@@ -111,25 +113,30 @@ class Cost_Controller_2D:
         self.Dif_y = np.zeros((self.N_y, self.N_y))       # Diffusion (Y)
 
         for ij in range(self.N_x):
+            ## 3rd order upwind 
             self.Adv_x[ij, int(ij + 2) % self.N_x] = -1/6
             self.Adv_x[ij, int(ij + 1) % self.N_x] =  6/6
             self.Adv_x[ij, ij % self.N_x]          = -3/6
             self.Adv_x[ij, int(ij - 1) % self.N_x] = -2/6
             
+            ## 2nd order centered difference
             self.Dif_x[ij, int(ij + 1) % self.N_x] =  1
             self.Dif_x[ij, ij % self.N_x]          = -2
             self.Dif_x[ij, int(ij - 1) % self.N_x] =  1
         
-        for ij in range(self.N_y):    
+        for ij in range(self.N_y):  
+            ## 3rd order upwind   
             self.Adv_y[ij, int(ij + 2) % self.N_y] = -1/6
             self.Adv_y[ij, int(ij + 1) % self.N_y] =  6/6
             self.Adv_y[ij, ij % self.N_y]          = -3/6
             self.Adv_y[ij, int(ij - 1) % self.N_y] = -2/6
             
+            ## 2nd order centered difference
             self.Dif_y[ij, int(ij + 1) % self.N_y] =  1
             self.Dif_y[ij, ij % self.N_y]          = -2
             self.Dif_y[ij, int(ij - 1) % self.N_y] =  1
-            
+
+        ### Merge X and Y to get a single matrix for advection and diffusion    
         self.A_adv = kron(identity(self.N_y), self.Rx * self.Adv_x) \
                    + kron(self.Ry * self.Adv_y, identity(self.N_x))      
         self.A_dif = kron(identity(self.N_y), self.Fx * self.Dif_x) \

@@ -4,7 +4,7 @@ Created on Wed Aug 19 16:17:29 2020
 @author: Pranab JD
 
 Description: -
-        Contains several integrators 2 matrices equations
+        Contains several integrators for 2-matrix equations
         (A_adv.u^m_adv + A_dif.u^m_dif)
 
         The exponential integrators in this code have been
@@ -17,7 +17,35 @@ from Leja_Interpolation import *
 
 ################################################################################################
 
-### Reference Integrators (Explicit methods)
+### Explicit Integrators ###
+
+def RK2(A_adv, m_adv, A_dif, m_dif, u, dt):
+    """
+    Parameters
+    ----------
+    A_adv   : Advection matrix (A)
+    m_adv   : Index of u (u^m_adv); advection
+    A_dif   : Diffusion matrix (A)
+    m_dif   : Index of u (u^m_dif); diffusion
+    u       : 1D vector u (input)
+    dt      : dt
+
+    Returns
+    -------
+    u_rk2   : 1D vector u (output) after time dt (2nd order)
+    4       : # of matrix-vector products
+
+    """
+
+    k1 = dt * (A_adv.dot(u**m_adv) + A_dif.dot(u**m_dif))
+    k2 = dt * (A_adv.dot((u + k1)**m_adv) + A_dif.dot((u + k1)**m_dif))
+
+    ## Solution
+    u_rk2 = u + 1./2. * (k1 + k2)
+
+    return u_rk2, 2
+
+##############################################################################
 
 def RK4(A_adv, m_adv, A_dif, m_dif, u, dt):
     """
@@ -32,7 +60,7 @@ def RK4(A_adv, m_adv, A_dif, m_dif, u, dt):
 
     Returns
     -------
-    u_rk4   : 1D vector u (output) after time dt
+    u_rk4   : 1D vector u (output) after time dt (4th order)
     8       : # of matrix-vector products
 
     """
@@ -62,8 +90,10 @@ def RKF45(A_adv, m_adv, A_dif, m_dif, u, dt):
 
     Returns
     -------
-    u_rkf45 : 1D vector u (Output) after time dt (4th and 5th order)
-    10, 12  : # of matrix-vector products
+    u_rkf4  : 1D vector u (output) after time dt (4th order)
+    10      : # of matrix-vector products for u_rkf4
+    u_rkf5  : 1D vector u (output) after time dt (5th order)
+    12      : # of matrix-vector products for u_rkf5
 
     """
 
@@ -90,9 +120,7 @@ def RKF45(A_adv, m_adv, A_dif, m_dif, u, dt):
 
 ################################################################################################
 
-### Exponential Integrators
-
-### ETD ###
+### Exponential Integrators ###
 
 def ETD(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     """
@@ -129,14 +157,12 @@ def ETD(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     u_sol, mat_vec_num = Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
 
-    ### ETD1 Solution ###
+    ### ETD Solution
     u_etd = u + (u_sol * dt)
 
     return u_etd, mat_vec_num
 
 ##############################################################################
-
-### EXPRB42 ###
 
 def EXPRB42(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     """
@@ -196,11 +222,14 @@ def EXPRB42(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     ############## --------------------- ##############
 
     u_1, its_1 = Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
-    u_nl_3, its_3 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl, A_lin)
+    u_nl_3, its_3 = Leja_phi(u, (Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl)
 
+    ### 4th order solution
     u_exprb42 = u + (u_1 * dt) + (u_nl_3 * 32*dt/9)
 
-    return u_exprb42, 8 + its_a + its_1 + its_3
+    mat_vec_num = 8 + its_a + its_1 + its_3
+
+    return u_exprb42, mat_vec_num
 
 ##############################################################################
 
@@ -219,9 +248,9 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     Returns
     -------
     u_exprb2        : 1D vector u (output) after time dt (2nd order)
-    2 + its_a       : # of matrix-vector products for 2nd order solution
+    mat_vec_num_2   : # of matrix-vector products for 2nd order solution
     u_exprb3        : 1D vector u (output) after time dt (3rd order)
-    5+its_a+its_3   : # of matrix-vector products for 3rd order solution
+    mat_vec_num_3   : # of matrix-vector products for 3rd order solution
 
     """
 
@@ -247,7 +276,7 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     a_n_f, its_a = Leja_phi(u, (f_u_lin + f_u_nl), dt, c, Gamma, phi_1, A_nl, m_nl, A_lin)
     a_n = u + (a_n_f * dt)
 
-    u_exprb2 = a_n
+    u_exprb2 = a_n; mat_vec_num_2 = 2 + its_a
 
     ############## --------------------- ##############
 
@@ -267,14 +296,13 @@ def EXPRB32(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     ### 3rd order solution
     u_3, its_3 = Leja_phi(u, 2*(Nonlin_a - Nonlin_u), dt, c, Gamma, phi_3, A_nl, m_nl)
-
     u_exprb3 = u_exprb2 + (u_3 * dt)
 
-    return u_exprb2, 2 + its_a, u_exprb3, 5 + its_a + its_3
+    mat_vec_num_3 = 5 + its_a + its_3
+
+    return u_exprb2, mat_vec_num_2, u_exprb3, mat_vec_num_3
 
 ##############################################################################
-
-### EXPRB43 ###
 
 def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     """
@@ -291,9 +319,9 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     Returns
     -------
     u_exprb3        : 1D vector u (output) after time dt (3rd order)
-    12 + its_a +... : # of matrix-vector products for 3rd order solution
+    mat_vec_num_3   : # of matrix-vector products for 3rd order solution
     u_exprb4        : 1D vector u (output) after time dt (4th order)
-    12 + its_a +... : # of matrix-vector products for 4th order solution
+    mat_vec_num_4   : # of matrix-vector products for 4th order solution
 
     """
 
@@ -341,6 +369,8 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
 
     b_n = u + (b_n_f * dt) + (b_n_nl * dt)
 
+    ############# --------------------- ##############
+
     ### J(u) * b
     Linear_b = (A_nl.dot((u + (epsilon * b_n))**m_nl) - f_u_nl)/epsilon
 
@@ -357,6 +387,9 @@ def EXPRB43(A_nl, m_nl, A_lin, u, dt, c, Gamma, Real_Imag_Leja):
     u_exprb3 = u + (u_1 * dt) + (u_nl_3 * dt)
     u_exprb4 = u_exprb3 + (u_nl_4 * dt)
 
-    return u_exprb3, 12 + its_a + its_b_1 + its_b_2 + its_3, u_exprb4, 12 + its_a + its_b_1 + its_b_2 + its_3 + its_4
+    mat_vec_num_3 = 12 + its_a + its_b_1 + its_b_2 + its_3
+    mat_vec_num_4 = 12 + its_a + its_b_1 + its_b_2 + its_3 + its_4
+
+    return u_exprb3, mat_vec_num_3, u_exprb4, mat_vec_num_4
 
 ##############################################################################

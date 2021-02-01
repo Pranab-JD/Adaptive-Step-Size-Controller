@@ -33,10 +33,6 @@ class Inviscid_Burgers_1D(Cost_Controller_1D):
         u0 = 2 + self.epsilon_1 * np.sin(2 * np.pi * self.X) + self.epsilon_2 * np.sin(8 * np.pi * self.X + 0.3)
         self.u = u0.copy()
 
-    def initialize_parameters(self):
-        super().initialize_parameters()
-        self.dt = 1 * self.adv_cfl      # N * CFL condition
-
     def initialize_matrices(self):
         super().initialize_matrices()
         self.A_adv = 0.5 * self.A_adv   # 1/2, since conservative form of Burgers' equation
@@ -110,10 +106,6 @@ class Inviscid_Burgers_2D(Cost_Controller_2D):
         u0 = 2 + self.epsilon_1 * (np.sin(2 * np.pi * self.X) + np.sin(2 * np.pi * self.Y)) \
         	   + self.epsilon_2 * (np.sin(8 * np.pi * self.X + 0.3) + np.sin(8 * np.pi * self.Y + 0.3))
         self.u = u0.copy()
-
-    def initialize_parameters(self):
-        super().initialize_parameters()
-        self.dt = 2 * self.adv_cfl      # N * CFL condition
 
     def initialize_matrices(self):
         super().initialize_matrices()

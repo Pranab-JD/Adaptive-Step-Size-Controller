@@ -44,5 +44,6 @@ class cost_ctrler_nn:
                 grad_c.append( (log(l_cost[-(1+i)])-log(l_cost[-(2+i)]))/(log(l_tau[-(1+i)])-log(l_tau[-(2+i)])) )
             else:
                 grad_c.append(0.0)
+                
         return exp(-0.6524*self.model.predict([grad_c])[0][0])
 

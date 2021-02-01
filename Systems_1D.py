@@ -14,11 +14,14 @@ import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 from Adaptive_Step_Size import *
-from stepsizectrlnnhist import cost_ctrler_nn
 from Porous_Medium import Porous_Medium_1D
+from stepsizectrlnnhist import cost_ctrler_nn
 from Viscous_Burgers import Viscous_Burgers_1D
 from Inviscid_Burgers import Inviscid_Burgers_1D
 from Diffusion_Advection import Diffusion_Advection_1D
+
+### Call the neural network cost controller
+Cost_Controller_3N = cost_ctrler_nn()
 
 ##############################################################################
 
@@ -37,8 +40,8 @@ class Run_1D_Systems(Process):
         n_val = '{:3.0f}'.format(self.N)
         eta_val = '{:2.0f}'.format(self.eta)
         emax = '{:5.1e}'.format(self.error_tol)
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/1D/Viscous/Adaptive/0.01")
-        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/Cost Controller 3N/tol " + str(emax) + \
+        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/1D/Viscous/Adaptive/")
+        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/Non Penalized/tol " + str(emax) + \
                                     "/EXPRB43/")
         path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val))
 
@@ -56,23 +59,24 @@ class Run_1D_Systems(Process):
         file_param.close()
 
         ### Create files
-        file_dt = open(path + "dt.txt", 'w+')
+        file_dt = open(path + "dt.txt", 'w+')               # dt used at each time step
+        file_dt_trad = open(path + "dt_trad.txt", 'w+')     # dt yielded by traditional controller
 
-        time = 0                                    # Time
-        counter = 0                                 # Counter for # of time steps
-        count_mv = 0                                # Counter for matrix-vector products
+        time = 0                                            # Time
+        counter = 0                                         # Counter for # of time steps
+        count_mv = 0                                        # Counter for matrix-vector products
 
-        dt_history = []
-        time_arr = []
-        mat_vec_prod = []
+        dt_history = []                                     # Array - dt used
+        time_arr = []                                       # Array - time elapsed after each time step
+        mat_vec_prod = []                                   # Array - # of matrix-vector products
 
-        cost_iter = 0
-        trad_iter = 0
+        cost_iter = 0                                       # Num. of times cost controller used
+        trad_iter = 0                                       # Num. of times trad. controller used
         dt_trad = self.dt
-        Method_order = 3
+        Method_order = 3                                    # Order of the time integrator (error estimator)
 
         ############## --------------------- ##############
-
+        
         ### Time loop ###
         while (time < self.tmax):
 
@@ -94,6 +98,9 @@ class Run_1D_Systems(Process):
                     new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
                     dt_trad = 0.8 * new_dt          # Safety factor
 
+                ## dt estimated by trad controller in this time step
+                dt_trad_est = dt_used
+                
                 cost_trad = num_mv_sol + num_mv_trad
                 cost_cont = 0
                 trad_iter = trad_iter + 1
@@ -118,17 +125,21 @@ class Run_1D_Systems(Process):
                     print('Error > tol in the final time step!! Reducing dt.......')
 
                     ### Traditional controller
-                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
+                    u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_final, \
                                                                                             Method_order, error, self.error_tol)
 
                     cost_trad = num_mv_final + num_mv_trad
                     cost_cont = 0
                     trad_iter = trad_iter + 1
+                    
+                    ## dt estimated by trad controller in this time step
+                    dt_trad_est = dt_used 
 
                 else:
                     cost_cont = cost_trad = num_mv_final
                     dt_used = dt_final
-                    print('Last time step:', time, dt_used, time + dt_used)
+                    print('Last time step:', time, '\n', 'Step size used: ', dt_used, 
+                          '\n', 'Final time: ', time + dt_used)
                     break
 
             ############## --------------------- ##############
@@ -141,6 +152,7 @@ class Run_1D_Systems(Process):
 
                 # error = np.mean(abs(u_ref - u_sol))
 
+                ### Chosen value of dt does not guarantee that error requirements are met
                 # if error > self.error_tol:
                 #     u_sol, u_ref, dt_inp, dt_used, dt_trad, num_mv_trad = Traditional_Controller(self.Solution, self.u, dt_trad, \
                 #                                                                             Method_order, error, self.error_tol)
@@ -156,11 +168,14 @@ class Run_1D_Systems(Process):
                 # cost_trad = num_mv_sol + num_mv_trad
                 # cost_cont = 0
                 # trad_iter = trad_iter + 1
+
+                ## dt estimated by trad controller in this time step
+                # dt_trad_est = dt_used
                 
                 ### ------------------------ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ------------------------ ###
 
 
-                ### ---------- xxxxxxxxx ---------- Cost Controllers ---------- xxxxxxxxx ---------- ###
+                ### ---------- xxxxxxxxx ---------- Cost Controllers ---------- xxxxxxxxx ----------- ###
                 
                 def Cost_2Node():
                     """
@@ -171,11 +186,11 @@ class Run_1D_Systems(Process):
                     """
 
                     ### Cost and dt used from previous 2 time steps
-                    mat_vec_prod_n = mat_vec_prod[counter - 1]; dt_history_n = dt_history[counter - 1]
-                    mat_vec_prod_n_1 = mat_vec_prod[counter - 2]; dt_history_n_1 = dt_history[counter - 2]
+                    dt_history_n = dt_history[counter - 1]; cost_n = mat_vec_prod[counter - 1]/dt_history_n
+                    dt_history_n_1 = dt_history[counter - 2]; cost_n_1 = mat_vec_prod[counter - 2]/dt_history_n_1
                     
                     ### 0 = Non-penalized; 1 = Penalized
-                    dt_controller = Cost_Controller_2N(mat_vec_prod_n, dt_history_n, mat_vec_prod_n_1, dt_history_n_1, 0)
+                    dt_controller = Cost_Controller_2N(cost_n, dt_history_n, cost_n_1, dt_history_n_1, 0)
                     
                     return dt_controller
                 
@@ -188,17 +203,14 @@ class Run_1D_Systems(Process):
                     dt_controller   : dt estimate using 3 time steps' history
                     
                     """
-                    
-                    ### Call the 3-point cost controller
-                    Cost_Controller_3N = cost_ctrler_nn()
 
                     ### Cost and dt used from previous 3 time steps
-                    mat_vec_prod_n = mat_vec_prod[counter - 1]; dt_history_n = dt_history[counter - 1]
-                    mat_vec_prod_n_1 = mat_vec_prod[counter - 2]; dt_history_n_1 = dt_history[counter - 2]
-                    mat_vec_prod_n_2 = mat_vec_prod[counter - 3]; dt_history_n_2 = dt_history[counter - 3]
+                    dt_history_n = dt_history[counter - 1]; cost_n = mat_vec_prod[counter - 1]/dt_history_n
+                    dt_history_n_1 = dt_history[counter - 2]; cost_n_1 = mat_vec_prod[counter - 2]/dt_history_n_1 
+                    dt_history_n_2 = dt_history[counter - 3]; cost_n_2 = mat_vec_prod[counter - 3]/dt_history_n_2
 
                     dt_controller = dt_used * Cost_Controller_3N.evaluate( \
-                                                [mat_vec_prod_n_2, mat_vec_prod_n_1, mat_vec_prod_n], \
+                                                [cost_n_2, cost_n_1, cost_n], \
                                                 [dt_history_n_2, dt_history_n_1, dt_history_n])
 
                     return dt_controller
@@ -206,8 +218,8 @@ class Run_1D_Systems(Process):
                 ############## --------------------- ##############
                 
                 ### Choose any 1 cost controller
-                # dt_controller = Cost_2Node()
-                dt_controller = Cost_3Node()
+                dt_controller = Cost_2Node()
+                # dt_controller = Cost_3Node()
                 
                 ### Choose the minimum step size
                 dt = min(dt_controller, dt_trad)
@@ -234,7 +246,7 @@ class Run_1D_Systems(Process):
                 else:
                 
                     if dt == dt_trad:
-                
+
                         ### dt from traditional controller used
                         cost_trad = num_mv_sol
                         cost_cont = 0
@@ -254,6 +266,9 @@ class Run_1D_Systems(Process):
                 
                     ## dt used in this time step
                     dt_used = dt
+                    
+                    ## dt estimated by trad controller in this time step
+                    dt_trad_est = dt_trad 
                 
                     ### Estimate of dt for next time step using traditional controller ###
                     new_dt = dt_used * (self.error_tol/error)**(1/(Method_order + 1))
@@ -266,7 +281,7 @@ class Run_1D_Systems(Process):
             count_mv_iter = max(cost_cont, cost_trad)           # No. of matrix-vector products at each time step
             count_mv = count_mv + count_mv_iter                 # Total no. of matrix-vector products
             mat_vec_prod.append(count_mv_iter)                  # List of no. of matrix-vector products at each time step
-            dt_history.append(dt_used)                             # List of no. of dt at each time step
+            dt_history.append(dt_used)                          # List of dt at each time step
 
             self.u = u_ref.copy()
             self.dt = dt_used
@@ -277,15 +292,16 @@ class Run_1D_Systems(Process):
 
             ### Write data to files
             file_dt.write('%.15f' % self.dt + '\n')
+            file_dt_trad.write('%.15f' % dt_trad_est + '\n')
 
             ############# --------------------- ##############
 
-            ### Test plots
-            plt.plot(self.X, u_ref, 'rd', label = 'Reference')
-            plt.plot(self.X, u_sol, 'b.', label = 'Data')
-            plt.legend()
-            plt.pause(self.dt/4)
-            plt.clf()
+            # ### Test plots
+            # plt.plot(self.X, u_ref, 'rd', label = 'Reference')
+            # plt.plot(self.X, u_sol, 'b.', label = 'Data')
+            # plt.legend()
+            # plt.pause(self.dt/4)
+            # plt.clf()
 
             ############## --------------------- ##############
 
@@ -313,19 +329,20 @@ class Run_1D_Systems(Process):
         
         ### Close files
         file_dt.close()
+        file_dt_trad.close()
 
         ############# --------------------- ##############
 
-        ### Plot dt vs time
-        advCFL = np.ones(counter) * self.adv_cfl
-        difCFL = np.ones(counter) * self.dif_cfl
+        # ### Plot dt vs time
+        # advCFL = np.ones(counter) * self.adv_cfl
+        # difCFL = np.ones(counter) * self.dif_cfl
 
-        plt.figure()
-        plt.loglog(time_arr, dt_history, 'b.:', label = 'dt used')
-        plt.loglog(time_arr, advCFL, 'r', label = 'Adv. CFL')
-        plt.loglog(time_arr, difCFL, 'g', label = 'Diff. CFL')
-        plt.legend()
-        plt.show()
+        # plt.figure()
+        # plt.loglog(time_arr, dt_history, 'b.:', label = 'dt used')
+        # plt.loglog(time_arr, advCFL, 'r', label = 'Adv. CFL')
+        # plt.loglog(time_arr, difCFL, 'g', label = 'Diff. CFL')
+        # plt.legend()
+        # plt.show()
 
     ##############################################################################
     ##############################################################################

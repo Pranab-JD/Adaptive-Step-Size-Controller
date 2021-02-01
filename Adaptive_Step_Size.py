@@ -58,7 +58,12 @@ def Traditional_Controller(Method, u, dt_inp, p, error, tol):
         if error <= tol:
             # print('Error within limits. dt accepted!! Error = ', error)
             dt_used = dt
-            dt_new = dt
+            # dt_new = dt
+            
+            ## For Cost_Controller_3N, no 2 step sizes can be the same!!
+            new_dt = dt * (tol/error)**(1/(p + 1))
+            dt_new = 0.8 * new_dt          # Safety factor
+            
             break
 
         ## Error alert
@@ -69,23 +74,20 @@ def Traditional_Controller(Method, u, dt_inp, p, error, tol):
 
 ################################################################################################
 
-def Cost_Controller_2N(count_mat_vec_n, dt_n, count_mat_vec_n_1, dt_n_1, Pen_Nonpen):
+def Cost_Controller_2N(cost_n, dt_n, cost_n_1, dt_n_1, Pen_Nonpen):
     """
     Parameters
     ----------
-    count_mat_vec_n        : Number of matrix-vector products at time step 'n'
-    dt_n                   : dt at time step 'n'
-    count_mat_vec_n_1      : Number of matrix-vector products at time step 'n-1'
-    dt_n_1                 : dt at time step 'n-1'
+    cost_n        : Cost at time step 'n' using dt_n
+    dt_n          : dt at time step 'n'
+    cost_n_1      : Cost at time step 'n-1' usinf dt_n_1
+    dt_n_1        : dt at time step 'n-1'
 
     Returns
     ---------
-    dt                     : dt (optimised for cost control)
+    dt            : dt (optimised for cost control)
 
     """
-
-    cost_n = count_mat_vec_n/dt_n
-    cost_n_1 = count_mat_vec_n_1/dt_n_1
 
     def Non_penalized():
 

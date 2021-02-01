@@ -167,7 +167,7 @@ def real_Leja_exp(A, u, dt, c_real, Gamma_real):
     poly = coeffs[0] * poly
 
     ## a_1, a_2 .... a_n terms
-    max_Leja_pts = 500
+    max_Leja_pts = 100
     y = u.copy()
     poly_vals = np.zeros(max_Leja_pts)
     poly_tol = 1e-4
