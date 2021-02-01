@@ -107,9 +107,8 @@ def Power_iteration(A, u, m):
         tol = 0.1
         niters = 1000
         epsilon = 1e-7
-        eigen_val = np.zeros(niters)
-        vector = np.zeros(len(u))
-        vector[0] = 1
+        eigen_val = np.zeros(niters)                # Max. eigen value determined by iterations
+        vector = np.zeros(len(u)); vector[0] = 1    # Initial estimate of eigen vector
 
         for ii in range(niters):
 
@@ -117,16 +116,19 @@ def Power_iteration(A, u, m):
 
             eigen_val[ii] = np.max(abs(eigen_vector))
 
+            ## Convergence is to be checked for eigen values, not eigen vectors
+            ## since eigen values converge faster than eigen vectors
             if (abs(eigen_val[ii] - eigen_val[ii - 1]) <= tol * eigen_val[ii]):
                 break
             else:
-                eigen_vector = eigen_vector/eigen_val[ii]
-                vector = eigen_vector.copy()
+                eigen_vector = eigen_vector/eigen_val[ii]       # Normalize eigen vector to eigen value
+                vector = eigen_vector.copy()                    # New estimate of eigen vector
 
         return eigen_val[ii], ii
 
     eigen_imag, i2 = eigens(A_SkewHerm)
     eigen_real, i1 = eigens(A_Herm)
+
     ## Real eigen value has to be negative
     eigen_real = - eigen_real
 
@@ -194,9 +196,9 @@ def real_Leja_exp(A, u, dt, c_real, Gamma_real):
             y_val[ii, :] = coeffs[ii] * y
             break
 
-        # ## To stop diverging
-        # elif poly_vals[ii] > 1e13:
-        #     return 20 * u, ii
+        ## To stop diverging
+        elif poly_vals[ii] > 1e13:
+            return 20 * u, ii
 
         else:
             y_val[ii, :] = coeffs[ii] * y
