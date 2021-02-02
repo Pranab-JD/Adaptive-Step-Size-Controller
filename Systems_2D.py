@@ -41,10 +41,10 @@ class Run_2D_Systems(Process):
         n_x = '{:2.0f}'.format(self.N_x); n_y = '{:2.0f}'.format(self.N_y)
         eta_x = '{:2.0f}'.format(self.eta_x); eta_y = '{:2.0f}'.format(self.eta_y)
         emax = '{:5.1e}'.format(self.error_tol)
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/2D/Inviscid/Adaptive/t_0.0325")
-        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y) \
+        direc_cost = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/2D/Viscous/Adaptive/")
+        path = os.path.expanduser(direc_cost + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y) \
                                     + "/Penalized/tol " + str(emax) + "/EXPRB43/")
-        path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y))
+        path_sim = os.path.expanduser(direc_cost + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y))
 
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -347,24 +347,45 @@ class Run_2D_Systems(Process):
 
     def constant_h(self):
 
+        ### Create directory
+        n_x = '{:2.0f}'.format(self.N_x); n_y = '{:2.0f}'.format(self.N_y)
+        eta_x = '{:2.0f}'.format(self.eta_x); eta_y = '{:2.0f}'.format(self.eta_y)
+        emax = '{:5.1e}'.format(self.error_tol)
+        dt_val = '{:5.1e}'.format(self.dt/(min(self.adv_cfl, self.dif_cfl)))
+        direc_cost = os.path.expanduser("~/PrJD/Cost Controller Movies/Burgers' Equation/2D/Viscous/Constant/")
+        path = os.path.expanduser(direc_cost + "/eta_" + str(eta_x) + "_" + str(eta_y)  + "/N_" + str(n_x) + "_" + str(n_y) \
+                                    + "/dt " + str(dt_val) + "/")
+
+        if os.path.exists(path):
+            shutil.rmtree(path)                     # remove previous directory with same name
+        os.makedirs(path, 0o777)                    # create directory with access rights
+
+        ### Write simulation parameters to a file
+        file_param = open(path + '/Simulation_Parameters.txt', 'w+')
+        file_param.write('N_x = %d' % self.N_x + '\n')
+        file_param.write('N_y = %d' % self.N_y + '\n')
+        file_param.write('eta_x = %f' % self.eta_x + '\n')
+        file_param.write('eta_y = %f' % self.eta_y + '\n')
+        file_param.write('Adv. CFL time = %.5e' % self.adv_cfl + '\n')
+        file_param.write('Diff. CFL time = %.5e' % self.dif_cfl + '\n')
+        file_param.write('Normalized dt = ' + str(dt_val) + '\n')
+        file_param.write('Simulation time = %e' % self.tmax)
+        file_param.close()
+        
         time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
         count_mv = 0                                # Counter for matrix-vector products
-
-        ############## --------------------- ##############
-
-        ### Create directory
-        # n_val = '{:3.0f}'.format(self.N)
-        # eta_val = '{:2.0f}'.format(self.eta)
-        # direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/" + str(Process) + "/Constant")
-        # path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/EXPRB43/")
-
-        # if os.path.exists(path):
-        #     shutil.rmtree(path)                     # remove previous directory with same name
-        # os.makedirs(path, 0o777)                    # create directory with access rights
         
         ## Reshape into 1D
         self.u = self.u.reshape(self.N_x * self.N_y)
+        
+        ### Create files and write initial data
+        file_dt = open(path + "time.txt", 'w+')
+        file_dt.write('%.15f' % time + '\n')
+        
+        file_data = open(path + str(counter) + ".txt", 'w+')
+        np.savetxt(file_data, self.u.reshape(self.N_y, self.N_x), fmt = '%.25f')
+        file_data.close()
 
         ############## --------------------- ##############
 
@@ -381,31 +402,42 @@ class Run_2D_Systems(Process):
                     print('Final step size:', self.dt)
 
 
-            u_sol, u, num_mv_sol = self.Solution(self.u, self.dt)
-
-            # u_ref, num_mv_sol = RK2(self.A_adv, 2, self.u, self.dt)
+            u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, self.dt)
 
             ### Update variables
             count_mv = count_mv + num_mv_sol
             counter = counter + 1
 
-            self.u = u_sol.copy()
+            self.u = u_ref.copy()
             time = time + self.dt
+
+            if counter % 10 == 0:
+                ### Write data to files every 10 time steps
+                file_dt.write('%.15f' % time + '\n')
+
+                file_data = open(path + str(counter) + ".txt", 'w+')
+                np.savetxt(file_data, u_ref.reshape(self.N_y, self.N_x), fmt = '%.25f')
+                file_data.close()
 
             ############# --------------------- ##############
 
-            ### Test plots
-            plt.imshow(self.u.reshape(self.N_y, self.N_x), cmap = cm.plasma, origin = 'lower', extent = [0, 1, 0, 1])
-            plt.pause(self.dt)
+            # ### Test plots
+            # plt.imshow(self.u.reshape(self.N_y, self.N_x), cmap = cm.plasma, origin = 'lower', extent = [0, 1, 0, 1])
+            # plt.pause(self.dt)
 
             ############## --------------------- ##############
 
         print('Number of time steps = ', counter)
         print('Total number of matrix-vector products = ', count_mv)
 
-        # ### Write final data to files
-        # file_final = open(path + "Final_data.txt", 'w+')
-        # np.savetxt(file_final, u_sol.reshape(self.N_y, self.N_x), fmt = '%.25f')
-        # file_final.close()
-
+        ### Write simulation results to file
+        file_res = open(path + 'Results.txt', 'w+')
+        file_res.write('Number of time steps = %d' % counter + '\n')
+        file_res.write('Number of matrix-vector products = %d' % count_mv)
+        file_res.close()
+        
+        ### Close files
+        file_dt.close()
+        file_data.close()
+        
 ##############################################################################

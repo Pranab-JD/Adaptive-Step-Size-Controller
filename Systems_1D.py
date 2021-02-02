@@ -40,10 +40,10 @@ class Run_1D_Systems(Process):
         n_val = '{:3.0f}'.format(self.N)
         eta_val = '{:2.0f}'.format(self.eta)
         emax = '{:5.1e}'.format(self.error_tol)
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/1D/Viscous/Adaptive/")
-        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/Non Penalized/tol " + str(emax) + \
-                                    "/EXPRB43/")
-        path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val))
+        direc_cost = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Burgers' Equation/1D/Viscous/Adaptive/")
+        path = os.path.expanduser(direc_cost + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/Non Penalized/tol " \
+                                 + str(emax) + "/EXPRB43/")
+        path_sim = os.path.expanduser(direc_cost + "/eta_" + str(eta_val) + "/N_" + str(n_val))
 
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
@@ -353,16 +353,15 @@ class Run_1D_Systems(Process):
         n_val = '{:3.0f}'.format(self.N)
         eta_val = '{:2.0f}'.format(self.eta)
         dt_val = '{:5.1e}'.format(self.dt/(min(self.adv_cfl, self.dif_cfl)))
-        direc_cost_control = os.path.expanduser("~/PrJD/Cost Controller Data Sets/Diffusion Advection/1D/Constant")
-        path = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/dt " + str(dt_val) + "/")
-        path_sim = os.path.expanduser(direc_cost_control + "/eta_" + str(eta_val) + "/N_" + str(n_val))
+        direc_cost = os.path.expanduser("~/PrJD/Cost Controller Movies/Burgers' Equation/1D/Viscous/Constant/")
+        path = os.path.expanduser(direc_cost + "/eta_" + str(eta_val) + "/N_" + str(n_val) + "/dt " + str(dt_val) + "/")
         
         if os.path.exists(path):
             shutil.rmtree(path)                     # remove previous directory with same name
         os.makedirs(path, 0o777)                    # create directory with access rights
         
         ### Write simulation parameters to a file
-        file_param = open(path_sim + '/Simulation_Parameters.txt', 'w+')
+        file_param = open(path + '/Simulation_Parameters.txt', 'w+')
         file_param.write('N = %d' % self.N + '\n')
         file_param.write('eta = %d' % self.eta + '\n')
         file_param.write('Adv. CFL time = %.5e' % self.adv_cfl + '\n')
@@ -371,12 +370,15 @@ class Run_1D_Systems(Process):
         file_param.write('Simulation time = %e' % self.tmax)
         file_param.close()
         
-        ### Create files
-        file_dt = open(path + "dt.txt", 'w+')
-        
-        time = 0
+        time = 0                                    # Time
         counter = 0                                 # Counter for # of time steps
         count_mv = 0                                # Counter for matrix-vector products
+
+        ### Create files and write initial data
+        file_dt = open(path + "time.txt", 'w+')
+        file_data = open(path + "Data_set.txt", 'w+')
+        file_dt.write('%.15f' % time + '\n')
+        file_data.write(' '.join(map(str, self.u)) % self.u + '\n')
 
         ############## --------------------- ##############
 
@@ -392,20 +394,19 @@ class Run_1D_Systems(Process):
                 else:
                     print('Final step size:', self.dt)
 
-
-            u_sol, u, num_mv_sol = self.Solution(self.u, self.dt)
-            
-            print(num_mv_sol)
+            u_sol, u_ref, u, num_mv_sol = self.Solution(self.u, self.dt)
 
             ### Update variables
             count_mv = count_mv + num_mv_sol
             counter = counter + 1
 
-            self.u = u_sol.copy()
+            self.u = u_ref.copy()
             time = time + self.dt
 
-            ### Write data to files
-            file_dt.write('%.15f' % self.dt + '\n')
+            if counter % 10 == 0:
+                ### Write data to files every 10 time steps
+                file_dt.write('%.15f' % time + '\n')
+                file_data.write(' '.join(map(str, u_ref)) % u_ref + '\n')
 
             ############# --------------------- ##############
 
@@ -426,10 +427,8 @@ class Run_1D_Systems(Process):
         file_res.write('Number of matrix-vector products = %d' % count_mv)
         file_res.close()
 
-        ### Write final data to file
-        file_final = open(path + "Final_data.txt", 'w+')
-        file_final.write(' '.join(map(str, u_sol)) % u_sol + '\n')
-        file_final.close()
-        file_final.close()
+        ### Close files
+        file_dt.close()
+        file_data.close()
 
 ##############################################################################
