@@ -32,6 +32,7 @@ class Cost_Controller_1D:
 	### Discretize the spatial domain
     def initialize_spatial_domain(self):
         self.dx = (self.xmax - self.xmin)/self.N
+		## Periodic boundary conditions on [self.xmin, self.xmax]
         self.X = np.linspace(self.xmin, self.xmax, self.N, endpoint = False)
 
     ### Parameters
@@ -88,6 +89,7 @@ class Cost_Controller_2D:
     def initialize_spatial_domain(self):
         self.dx = (self.xmax - self.xmin)/self.N_x
         self.dy = (self.ymax - self.ymin)/self.N_y
+		## Periodic boundary conditions on [self.xmin, self.xmax] x [self.ymin, self.ymax]
         self.X = np.linspace(self.xmin, self.xmax, self.N_x, endpoint = False)
         self.Y = np.linspace(self.ymin, self.ymax, self.N_y, endpoint = False)
         self.X, self.Y = np.meshgrid(self.X, self.Y)
