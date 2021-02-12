@@ -1,3 +1,5 @@
+Cost controller for Exponential Integrators
+
 Important points to be noted: -
 
 1. Order of the method is defined in Systems_1D.py and System_2D.py. Needs to changed in accordance with the method used. 
