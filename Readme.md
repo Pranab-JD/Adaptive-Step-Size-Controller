@@ -1,4 +1,4 @@
-Cost controller for Exponential Integrators
+# Cost Controller for Exponential Integrators
 
 Important points to be noted: -
 
