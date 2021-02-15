@@ -85,7 +85,7 @@ def Gershgorin(A):
 
 def Power_iteration(A, u, m):
     """
-    Power iterations return an approximation (1% accuracy) of 
+    Power iterations return an approximation (10% accuracy) of 
     the maximum eigen value. These values have to be multiplied 
     with a safety factor (slight overestimation is ok, 
     underestimation is not! Eg. 1.25 for real, 1.125 for imag)
@@ -98,7 +98,7 @@ def Power_iteration(A, u, m):
 
     Returns
     -------
-    eigen_val[ii] : Largest eigen value (within 2.5% accuracy)
+    eigen_val[ii] : Largest eigen value (within 10% accuracy)
     (ii + 1) * 2  : Number of matrix-vector products
                     (ii + 1): No. of iterations (starts from 0)
 
