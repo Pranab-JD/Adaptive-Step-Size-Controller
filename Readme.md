@@ -9,7 +9,7 @@ The step size controller has been engineered to minimize the computational cost 
 
 ## Code Structure
 1. Class_controller.py: Initializes the domain, matrices (advection and diffusion), boundary conditions, etc.
-2. Viscous_Burgers.py/Inviscid_Burgers.py/Porous_medium.py: Initializes the respective equations, initial conditions, eigen values (c and Gamma)
+2. Viscous_Burgers.py/Inviscid_Burgers.py/Porous_Medium.py: Initializes the respective equations, initial conditions, eigen values (c and Gamma)
 3. 
 
 
