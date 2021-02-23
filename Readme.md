@@ -8,8 +8,10 @@ The step size controller has been engineered to minimize the computational cost 
 
 
 ## Code Structure
-1. Class_controller.py - Initializes the domain, matrices (advection and diffusion), boundary conditions, etc.
-2. 
+1. Class_controller.py: Initializes the domain, matrices (advection and diffusion), boundary conditions, etc.
+2. Viscous_Burgers.py/Inviscid_Burgers.py/Porous_medium.py: Initializes the respective equations, initial conditions, eigen values (c and Gamma)
+3. 
+
 
 ## Technical Aspects
 1. Order of the method is defined in Systems_1D.py (and System_2D.py). This needs to changed in accordance with the method used. By default, it is set to 3 (for EXPRB43).
