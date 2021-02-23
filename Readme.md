@@ -2,6 +2,11 @@
 
 Important points to be noted: -
 
+
+
+
+## Technical Aspects
+
 1. Order of the method is defined in Systems_1D.py and System_2D.py. Needs to changed in accordance with the method used. 
 By default, it is set to 3.
 
