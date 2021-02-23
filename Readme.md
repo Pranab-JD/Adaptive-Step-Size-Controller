@@ -1,6 +1,10 @@
 # Cost Controller for Exponential Integrators
 
-Important points to be noted: -
+This code tests an adaptive step size controller, first proposed in [Einkemmer (2017), "An adaptive step size controller for iterative implicit methods"](https://www.sciencedirect.com/science/article/pii/S0168927418301387?via%3Dihub) for implicit integrators, for exponential integrators. 
+
+This code implements polynomial interpolation at Leja points, the convergence of which is check iteratively.
+
+This step size controller outperforms the traditional controller by 1 - 4 times for EXPRB43, for details, see [Deka & Einkemmer (2021), Efficient adaptive step size control for exponential integrators](https://arxiv.org/abs/2102.02524).
 
 
 
