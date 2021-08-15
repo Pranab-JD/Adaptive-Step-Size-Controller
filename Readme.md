@@ -1,6 +1,6 @@
 # Cost Controller for Exponential Integrators
 
-This code considers an adaptive step size controller, first proposed for implicit integrators in [Einkemmer (2017), "An adaptive step size controller for iterative implicit methods"](https://www.sciencedirect.com/science/article/pii/S0168927418301387?via%3Dihub), for exponential integrators. 
+This code considers an adaptive step size controller, first proposed for implicit integrators in [Einkemmer (2018), "An adaptive step size controller for iterative implicit methods"](https://www.sciencedirect.com/science/article/pii/S0168927418301387?via%3Dihub), for exponential integrators. 
 
 This code computes the matrix exponential and the <img src="https://render.githubusercontent.com/render/math?math=\varphi"> function by means of polynomial interpolation at Leja points, the convergence of which is checked iteratively.
 
